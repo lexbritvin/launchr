@@ -1,0 +1,21 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  create_release:
+    name: build / release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Goreleaser
+      run: |
+        goreleaser release --clean
+      env:
+        GITHUB_TOKEN: "${{ github.token }}"
