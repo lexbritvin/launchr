@@ -6,8 +6,7 @@ on:
       - "v*.*.*"
 
 jobs:
-  create_release:
-    name: build / release
+  goreleaser:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
