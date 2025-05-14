@@ -1,0 +1,128 @@
+name: Docker Workflow Example
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  SSH_JUMP_SERVER: serveo.net
+  SSH_JUMP_HOST_KEY: |
+    serveo.net ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxYGqSKVwJpQD1F0YIhz+bd5lpl7YesKjtrn1QD1RjQcSj724lJdCwlv4J8PcLuFFtlAA8AbGQju7qWdMN9ihdHvRcWf0tSjZ+bzwYkxaCydq4JnCrbvLJPwLFaqV1NdcOzY2NVLuX5CfY8VTHrps49LnO0QpGaavqrbk+wTWDD9MHklNfJ1zSFpQAkSQnSNSYi/M2J3hX7P0G2R7dsUvNov+UgNKpc4n9+Lq5Vmcqjqo2KhFyHP0NseDLpgjaqGJq2Kvit3QowhqZkK4K77AA65CxZjdDfpjwZSuX075F9vNi0IFpFkGJW9KlrXzI4lIzSAjPZBURhUb8nZSiPuzj
+
+jobs:
+  client-ssh-key:
+    name: Generate SSH Key
+    runs-on: ubuntu-latest
+    outputs:
+      private-key: ${{ steps.generate-key.outputs.private_key }}
+      public-key: ${{ steps.generate-key.outputs.public_key }}
+    steps:
+      - name: Generate ED25519 SSH key pair
+        id: generate-key
+        run: |
+          ssh-keygen -t ed25519 -N "" -f ./id_ed25519
+
+          echo "Export private ssh key"
+          {
+            echo "private_key<<EOF"
+            cat ./id_ed25519
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          #echo "Masking the private key"
+          #while IFS= read -r line; do
+          #  echo "::add-mask::$line"
+          #done < ./id_ed25519
+
+          echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
+  
+  linux-sidecar:
+    name: Linux Docker Sidecar
+    needs: [client-ssh-key]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Linux Docker sidecar
+        uses: lexbritvin/docker-sidecar-action/run-sidecar@main
+        with:
+          wait-for-job: "Windows Job"
+          jump-host: ${{ env.SSH_JUMP_SERVER }}
+          jump-host-key: ${{ env.SSH_JUMP_HOST_KEY }}
+          authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
+  
+  windows-job:
+    name: Windows Job
+    needs: [client-ssh-key]
+    runs-on: windows-latest
+    env:
+      SSH_JUMP_HOST: gh-linux-sidecar-${{ github.run_id }}-sidecar
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Export SSH key to file
+        id: export-key
+        shell: bash
+        env:
+          PRIVATE_KEY: ${{ needs.client-ssh-key.outputs.private-key }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
+          chmod 600 ~/.ssh/id_ed25519_tmp
+          echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
+
+      - name: test
+        shell: bash
+        run: |
+          echo "${{ steps.export-key.outputs.key_path }}"
+      - name: test
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-key
+          path: ~/.ssh/id_ed25519_tmp
+          retention-days: 1
+
+      # Set up the Docker sidecar environment
+      - name: Set up Remote Docker
+        id: docker-setup
+        uses: lexbritvin/docker-sidecar-action@main
+
+      - name: Forward Docker port
+        uses: lexbritvin/ssh-port-forward-action@main
+        with:
+          host: ${{ env.SSH_JUMP_HOST }}
+          port: 2222
+          username: "runner"
+          jump_hosts: ${{ env.SSH_JUMP_HOST }}@${{ env.SSH_JUMP_SERVER }}
+          private_key_path: ${{ steps.export-key.outputs.key_path }}
+          local_forwards: "2376:localhost:2376"
+          ssh_flags: -o StrictHostKeyChecking=no -o PreferredAuthentications=publickey
+          known_hosts: |
+            ${{ env.SSH_JUMP_HOST_KEY }}
+
+      - name: 🛠 Set up tmate session 🛠
+        id: tmate
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ failure() }}
+        with:
+          detached: true
+          limit-access-to-actor: true
+
+      - name: Run Docker container - Alpine
+        run: |
+          docker run --rm alpine:latest sh -c "echo 'Hello from Alpine container'; uname -a"
+
+      - name: Run Docker container - Node.js
+        run: |
+          docker run --rm node:18-alpine node -e "console.log('Node.js version:', process.version)"
+
+#      - name: Run Docker container with volume mount
+#        shell: bash
+#        run: |
+#          # Create a test file in the workspace
+#          echo "Hello from the host" > test-file.txt
+#
+#          # Mount the workspace and access the file from the container
+#          docker run --rm -v "$(pwd):/workspace" alpine:latest sh -c "cat /workspace/test-file.txt && echo 'Hello from the container' >> /workspace/test-file.txt"
+#
+#          # Verify the file was modified
+#          cat test-file.txt
