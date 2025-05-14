@@ -1,0 +1,93 @@
+# TODO: Test embed docker action.
+
+# Test env variables in actions.
+env HOST_ENV_1=bar
+env HOST_ENV_2=buz
+exec launchr test-env-vars
+stdout '^ACTION_ENV1=foo ACTION_ENV2=bar$'
+stdout '^HOST_ENV_1= HOST_ENV_2=$'
+! stderr .
+
+# Test extra hosts set in container.
+exec launchr test-extra-hosts
+stdout '^[0-9.]+\s+host\.docker\.internal$'
+stdout '^127\.1\.2\.3\s+example\.com$'
+! stderr .
+
+# Test output to different outputs.
+exec launchr test-output
+stdout '^output to stdout$'
+stderr '^output to stderr$'
+
+# Test exec override.
+exec launchr test-exec
+stdout '^action command$'
+! stderr .
+
+exec launchr test-exec --exec -- echo 'exec command'
+stdout '^exec command$'
+! stdout '^action command$'
+! stderr .
+
+exec launchr test-exec --exec --entrypoint 'echo' -- 'entrypoint command'
+stdout '^entrypoint command$'
+! stdout '^action command$'
+! stderr .
+
+-- actions/test-env-vars/action.yaml  --
+action:
+  title: envvars
+  description: Test passing static or dynamic environment variables to container
+
+runtime:
+  type: container
+  image: alpine:latest
+  env:
+    ACTION_ENV1: foo # Static value
+    ACTION_ENV2: ${HOST_ENV_1} # Dynamic value coming from host env vars
+  command:
+    - sh
+    - -c
+    - |
+      echo "ACTION_ENV1=$${ACTION_ENV1} ACTION_ENV2=$${ACTION_ENV2}"
+      echo "HOST_ENV_1=$${HOST_ENV_1} HOST_ENV_2=$${HOST_ENV_2}"
+
+-- actions/test-extra-hosts/action.yaml --
+action:
+  title: extrahosts
+  description: Test passing additional entries to container''s /etc/hosts
+
+runtime:
+  type: container
+  image: alpine:latest
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+    - "example.com:127.1.2.3"
+  command:
+    - cat
+    - /etc/hosts
+
+-- actions/test-exec/action.yaml  --
+action:
+  title: test exec override
+
+runtime:
+  type: container
+  image: alpine:latest
+  command:
+    - echo
+    - "action command"
+
+-- actions/test-output/action.yaml  --
+action:
+  title: test exec override
+
+runtime:
+  type: container
+  image: alpine:latest
+  command:
+    - sh
+    - -c
+    - |
+      echo "output to stdout"
+      echo "output to stderr" >&2

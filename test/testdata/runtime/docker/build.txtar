@@ -1,0 +1,160 @@
+exec launchr testimage-1
+stdout '^Image "my/testimage-1:latest" doesn''t exist locally, building...$'
+stdout '^Successfully built .+$'
+stdout '^Successfully tagged my/testimage-1:latest$'
+stdout '^Successfully tagged my/testimage-1:bar$'
+stdout '^Successfully tagged my/testimage-1:buz$'
+stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+! stderr .
+
+exec launchr testimage-1
+! stdout '^Image "my/testimage-1:latest" doesn''t exist locally, building...$'
+! stdout '^Successfully built .+$'
+! stdout '^Successfully tagged my/testimage-1:latest$'
+! stdout '^Successfully tagged my/testimage-1:bar$'
+! stdout '^Successfully tagged my/testimage-1:buz$'
+stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+! stderr .
+
+exec launchr testimage-1 --no-cache
+stdout '^Image "my/testimage-1:latest" doesn''t exist locally, building...$'
+stdout '^Successfully built .+$'
+stdout '^Successfully tagged my/testimage-1:latest$'
+stdout '^Successfully tagged my/testimage-1:bar$'
+stdout '^Successfully tagged my/testimage-1:buz$'
+stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+! stderr .
+
+exec launchr testimage-2 --remove-image
+stdout '^Image "my/testimage-2:foo" doesn''t exist locally, building...$'
+stdout '^Successfully built .+$'
+stdout '^Successfully tagged my/testimage-2:foo$'
+stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+! stderr .
+
+! exec docker image inspect my/testimage-2:foo --format '{{ .Id }}'
+stderr 'No such image: my/testimage-2:foo'
+
+exec launchr testimage-2
+stdout '^Image "my/testimage-2:foo" doesn''t exist locally, building...$'
+stdout '^Successfully built .+$'
+stdout '^Successfully tagged my/testimage-2:foo$'
+stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+! stderr .
+
+exec launchr testimage-3
+stdout '^Image "my/testimage-3" doesn''t exist locally, building...$'
+stdout '^Successfully built .+$'
+stdout '^Successfully tagged my/testimage-3:latest$'
+stdout '^Successfully tagged my/testimage-3:bar$'
+stdout '^Successfully tagged my/testimage-3:buz$'
+stdout '^MY_ARG_1=foo MY_ARG_2=bar$'
+! stderr .
+
+exec launchr test-embed-fs:container-image-build
+stdout '^Image "my/testimage-embed:latest" doesn''t exist locally, building...$'
+stdout '^Successfully built .+$'
+stdout '^Successfully tagged my/testimage-embed:latest$'
+stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+grep '^hello host from container$' ./container.txt
+! stderr .
+
+grep '^my\/testimage-1:latest h1:' ./.launchr/actions.sum
+grep '^my\/testimage-1:bar h1:' ./.launchr/actions.sum
+grep '^my\/testimage-1:buz h1:' ./.launchr/actions.sum
+grep '^my\/testimage-2:foo h1:' ./.launchr/actions.sum
+grep '^my\/testimage-3 h1:' ./.launchr/actions.sum
+grep '^my\/testimage-3:bar h1:' ./.launchr/actions.sum
+grep '^my\/testimage-3:buz h1:' ./.launchr/actions.sum
+grep '^my\/testimage-embed:latest h1:' ./.launchr/actions.sum
+
+exec docker rmi -f my/testimage-1:latest my/testimage-1:bar my/testimage-1:buz
+exec docker rmi -f my/testimage-2:foo
+exec docker rmi -f my/testimage-3 my/testimage-3:bar my/testimage-3:buz
+exec docker rmi -f my/testimage-embed:latest
+
+-- actions/testimage-1/action.yaml --
+action:
+  title: buildargs
+  description: Test passing args to Dockerfile
+
+runtime:
+  type: container
+  image: my/testimage-1:latest
+  build:
+    context: ./
+    args:
+      USER_ID: {{ .current_uid }}
+      GROUP_ID: {{ .current_gid }}
+      USER_NAME: foobar
+    tags:
+      - my/testimage-1:bar
+      - my/testimage-1:buz
+  command:
+    - id
+
+-- actions/testimage-1/Dockerfile --
+FROM alpine:latest
+ARG USER_ID
+ARG USER_NAME
+ARG GROUP_ID
+RUN adduser -D -u ${USER_ID} -g ${GROUP_ID} ${USER_NAME} || true
+USER ${USER_NAME}
+
+-- actions/testimage-2/action.yaml --
+action:
+  title: buildargs
+  description: Test passing args to Dockerfile
+
+runtime:
+  type: container
+  image: my/testimage-2:foo
+  build:
+    context: ./context
+    buildfile: test.Dockerfile
+    args:
+      USER_ID: {{ .current_uid }}
+      GROUP_ID: {{ .current_gid }}
+      USER_NAME: foobar
+  command:
+    - id
+
+-- actions/testimage-2/context/test.Dockerfile --
+FROM alpine:latest
+ARG USER_ID
+ARG USER_NAME
+ARG GROUP_ID
+RUN adduser -D -u ${USER_ID} -g ${GROUP_ID} ${USER_NAME} || true
+USER ${USER_NAME}
+
+-- actions/testimage-3/action.yaml --
+action:
+  title: buildargs
+  description: Test passing args to Dockerfile
+
+runtime:
+  type: container
+  image: my/testimage-3
+  command:
+    - sh
+    - -c
+    - echo "MY_ARG_1=$${MY_ARG_1} MY_ARG_2=$${MY_ARG_2}"
+
+-- .launchr/config.yaml --
+images:
+  my/testimage-3:
+    context: ./testimage-3
+    buildfile: test1.Dockerfile
+    args:
+      MY_ARG_1: "foo"
+      MY_ARG_2: "bar"
+    tags:
+      - my/testimage-3:bar
+      - my/testimage-3:buz
+
+-- .launchr/testimage-3/test1.Dockerfile --
+FROM alpine:latest
+ARG MY_ARG_1
+ARG MY_ARG_2
+ENV MY_ARG_1=${MY_ARG_1}
+ENV MY_ARG_2=${MY_ARG_2}

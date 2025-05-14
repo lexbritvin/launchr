@@ -81,7 +81,7 @@ type buildVars struct {
 	Cwd     string
 }
 
-// NewBuilder creates build environment.
+// NewBuilder creates a build environment.
 func NewBuilder(opts *BuildOptions) (*Builder, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -98,7 +98,7 @@ func (b *Builder) Build(ctx context.Context, streams launchr.Streams) error {
 	b.Term().Info().Printfln("Starting to build %s", b.PkgName)
 	// Prepare build environment dir and go executable.
 	var err error
-	b.env, err = newBuildEnvironment(streams)
+	b.env, err = newBuildEnvironment(streams, b.Debug)
 	if err != nil {
 		return err
 	}

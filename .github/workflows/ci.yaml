@@ -1,0 +1,20 @@
+name: CI
+on:
+#  push:
+#    branches:
+#      - '**'
+#    paths-ignore:
+#      - 'README.md'
+#      - 'LICENSE'
+#      - '.gitignore'
+#      - 'example/**'
+#      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  common-tests:
+    name: 🛡 Test
+    uses: ./.github/workflows/common-tests.yaml
+    with:
+      use-docker-sidecar: true        # Used for full testing environment
+      use-sidecar-remote-share: true  # Used for full testing environment

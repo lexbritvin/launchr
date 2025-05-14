@@ -62,8 +62,14 @@ type buildEnvironment struct {
 	streams launchr.Streams
 }
 
-func newBuildEnvironment(streams launchr.Streams) (*buildEnvironment, error) {
-	tmpDir, err := launchr.MkdirTemp("build_")
+func newBuildEnvironment(streams launchr.Streams, debug bool) (*buildEnvironment, error) {
+	var err error
+	var tmpDir string
+	if !debug {
+		tmpDir, err = launchr.MkdirTempWithCleanup("build_")
+	} else {
+		tmpDir, err = launchr.MkdirTemp("build_")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -107,18 +113,9 @@ func (env *buildEnvironment) CreateModFile(ctx context.Context, opts *BuildOptio
 	}
 
 	// Download core.
-	var coreRepl bool
-	for repl := range opts.ModReplace {
-		if strings.HasPrefix(opts.CorePkg.Path, repl) {
-			coreRepl = true
-			break
-		}
-	}
-	if !coreRepl {
-		err = env.execGoGet(ctx, opts.CorePkg.String())
-		if err != nil {
-			return err
-		}
+	err = env.execGoGet(ctx, opts.CorePkg.String())
+	if err != nil {
+		return err
 	}
 
 	// Download plugins.
@@ -126,7 +123,7 @@ nextPlugin:
 	for _, p := range opts.Plugins {
 		// Do not get plugins of module subpath.
 		for repl := range opts.ModReplace {
-			if strings.HasPrefix(p.Path, repl) {
+			if p.Path != repl && strings.HasPrefix(p.Path, repl) {
 				continue nextPlugin
 			}
 		}
@@ -164,7 +161,7 @@ func (env *buildEnvironment) execGoGet(ctx context.Context, args ...string) erro
 }
 
 func (env *buildEnvironment) RunCmd(ctx context.Context, cmd *exec.Cmd) error {
-	env.Log().Debug("executing shell", "cmd", cmd)
+	env.Log().Debug("executing shell", "cmd", cmd, "pwd", cmd.Dir)
 	err := cmd.Start()
 	if err != nil {
 		return err
