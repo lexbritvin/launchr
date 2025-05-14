@@ -1,0 +1,129 @@
+name: Code coverage
+on:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Opinionated defaults. Can be overridden in GitHub UI.
+env:
+  SSH_JUMP_HOST: ssh-j.com
+  SSH_JUMP_PORT: '22'
+  SSH_JUMP_USER: ':generate'
+  SSH_JUMP_FORWARD: ':generate'
+  SSH_JUMP_HOST_KEYS: |
+    ssh-j.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIiyFQuTwegicQ+8w7dLA7A+4JMZkCk8TLWrKPklWcRt
+
+jobs:
+  client-ssh-key:
+    name: Generate SSH Key
+    runs-on: ubuntu-latest
+    outputs:
+      private-key: ${{ steps.generate-key.outputs.private-key }}
+      public-key: ${{ steps.generate-key.outputs.public-key }}
+    steps:
+      - name: Generate ED25519 SSH key pair
+        id: generate-key
+        run: |
+          ssh-keygen -t ed25519 -N "" -f ./id_ed25519
+
+          echo "Export private ssh key"
+          {
+            echo "private-key<<EOF"
+            cat ./id_ed25519
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "public-key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
+
+  linux-sidecar:
+    name: Linux Docker Sidecar
+    needs: [ client-ssh-key ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Linux Docker sidecar
+        uses: lexbritvin/docker-sidecar-action/run-sidecar@main
+        with:
+          ssh-server-authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
+          ssh-jump-host: ${{ env.SSH_JUMP_SERVER }}
+          ssh-jump-user: ${{ env.SSH_JUMP_USER }}
+          ssh-jump-host-keys: ${{ env.SSH_JUMP_HOST_KEYS }}
+          ssh-jump-forward: ${{ env.SSH_JUMP_FORWARD }}
+
+      - name: ⚡ Wait for related jobs
+        uses: lexbritvin/wait-action@v1
+        with:
+          condition-type: 'job'
+          job-name: '/\(sidecar\)$/'
+          timeout-seconds: 1800
+          poll-interval-seconds: 30
+
+  test:
+    name: Test ${{ matrix.name }} ${{ matrix.needs-sidecar && '(sidecar)' }}
+    strategy:
+      matrix:
+        include:
+          - name: 🐧 Linux (amd64)
+            os: ubuntu-latest
+          - name: 🐧 Linux (arm64)
+            os: ubuntu-24.04-arm
+          - name: 🍎 MacOS (amd64)
+            os: macos-13
+            needs-sidecar: true
+          - name: 🍎 MacOS (arm64)
+            os: macos-latest
+            needs-sidecar: true
+          - name: 🖥️ Windows (amd64)
+            os: windows-latest
+            continue-on-error: true # TODO: Windows is not well supported
+            needs-sidecar: true
+          - name: 🖥️ Windows (arm64)
+            os: windows-11-arm
+            continue-on-error: true
+            needs-sidecar: true
+    runs-on: ${{ matrix.os }}
+    needs: [ client-ssh-key ]
+    continue-on-error: ${{ matrix.continue-on-error || false }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OS Info
+        uses: lexbritvin/os-info-action@v1
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Prepare dependencies
+        run: go mod download
+
+      # Set up the Docker sidecar environment
+      - name: Set up Remote Docker
+        id: docker-setup
+        uses: lexbritvin/docker-sidecar-action/setup-remote-docker@main
+        if: matrix.needs-sidecar == 'true'
+        with:
+          private-key: ${{ needs.client-ssh-key.outputs.private-key }}
+          use-remote-share: 'true'
+
+      - name: Go Test
+        id: go-tests
+        # TODO: Change GOTMPDIR for Windows/MacOS remote context
+        run: |
+          go test ./...
+
+  lint:
+    name: 🧹 Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Lint
+        run: make lint # TODO: do not autofix

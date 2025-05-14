@@ -71,7 +71,7 @@ type ioStreamer struct {
 func (h *ioStreamer) stream(ctx context.Context) error {
 	restoreInput, err := h.setupInput()
 	if err != nil {
-		return fmt.Errorf("unable to setup input stream: %s", err)
+		return fmt.Errorf("unable to setup inp stream: %s", err)
 	}
 
 	defer restoreInput()
@@ -101,7 +101,7 @@ func (h *ioStreamer) stream(ctx context.Context) error {
 
 func (h *ioStreamer) setupInput() (restore func(), err error) {
 	if h.inputStream == nil || !h.tty {
-		// No need to setup input TTY.
+		// No need to setup inp TTY.
 		// The restore func is a nop.
 		return func() {}, nil
 	}

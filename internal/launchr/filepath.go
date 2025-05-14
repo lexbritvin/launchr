@@ -7,6 +7,8 @@ import (
 	osuser "os/user"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"strings"
 )
 
 // MustAbs returns absolute filepath and panics on error.
@@ -63,7 +65,20 @@ func EnsurePath(parts ...string) error {
 
 // IsHiddenPath checks if a path is hidden path.
 func IsHiddenPath(path string) bool {
-	return isHiddenPath(path)
+	return isDotPath(path) || isHiddenPath(path)
+}
+
+func isDotPath(path string) bool {
+	if path == "." {
+		return false
+	}
+	dirs := strings.Split(filepath.ToSlash(path), "/")
+	for _, v := range dirs {
+		if v[0] == '.' {
+			return true
+		}
+	}
+	return false
 }
 
 // IsSystemPath checks if a path is a system path.
@@ -158,6 +173,16 @@ func MkdirTemp(pattern string) (string, error) {
 	if dirPath == "" {
 		return "", fmt.Errorf("failed to create temp directory")
 	}
+	return dirPath, nil
+}
+
+// MkdirTempWithCleanup creates a temporary directory with MkdirTemp.
+// The temp directory is removed when the app terminates.
+func MkdirTempWithCleanup(pattern string) (string, error) {
+	dirPath, err := MkdirTemp(pattern)
+	if err != nil {
+		return "", err
+	}
 
 	// Make sure the dir is cleaned on finish.
 	RegisterCleanupFn(func() error {
@@ -165,4 +190,52 @@ func MkdirTemp(pattern string) (string, error) {
 	})
 
 	return dirPath, nil
+}
+
+// EscapePathString escapes characters that may be
+// incorrectly treated as a string like backshash "\" in a Windows path.
+func EscapePathString(s string) string {
+	if filepath.Separator == '/' {
+		return s
+	}
+	return strings.Replace(s, "\\", "\\\\", -1)
+}
+
+// ConvertWindowsPath converts Windows paths to Docker-compatible paths
+func ConvertWindowsPath(windowsPath string) string {
+	// Regular expression to match Windows drive letters (C:, D:, etc.)
+	driveRegex := regexp.MustCompile(`^([A-Za-z]):[\\/](.*)`)
+
+	// Check if it's a Windows absolute path with drive letter
+	if matches := driveRegex.FindStringSubmatch(windowsPath); matches != nil {
+		driveLetter := strings.ToLower(matches[1])
+		restOfPath := matches[2]
+
+		// Convert backslashes to forward slashes
+		restOfPath = strings.ReplaceAll(restOfPath, "\\", "/")
+
+		// Return Docker-style path: /c/path/to/file
+		if restOfPath == "" {
+			return fmt.Sprintf("/%s/", driveLetter)
+		}
+		return fmt.Sprintf("/%s/%s", driveLetter, restOfPath)
+	}
+
+	// Handle root drive paths like "C:\"
+	rootDriveRegex := regexp.MustCompile(`^([A-Za-z]):\\?$`)
+	if matches := rootDriveRegex.FindStringSubmatch(windowsPath); matches != nil {
+		driveLetter := strings.ToLower(matches[1])
+		return fmt.Sprintf("/%s/", driveLetter)
+	}
+
+	// Handle UNC paths (\\server\share\path)
+	if strings.HasPrefix(windowsPath, "\\\\") {
+		// Remove leading \\ and convert backslashes to forward slashes
+		uncPath := strings.TrimPrefix(windowsPath, "\\\\")
+		uncPath = strings.ReplaceAll(uncPath, "\\", "/")
+		return "//" + uncPath
+	}
+
+	// Handle relative paths and other cases - just convert backslashes to forward slashes
+	return strings.ReplaceAll(windowsPath, "\\", "/")
 }
