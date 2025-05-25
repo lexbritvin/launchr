@@ -12,28 +12,27 @@ on:
   workflow_dispatch:
     inputs:
       os:
-        description: 'OS for tests'
-        required: true
-        default: '- All -'
+        description: 'Debug with SSH in OS'
+        required: false
         type: choice
         options:
-          - '- All -'
           - 'Ubuntu LTS (amd64)'
           - 'Ubuntu LTS (arm64)'
           - 'macOS Latest (arm64)'
           - 'macOS 13 (amd64)'
           - 'Windows Latest (amd64)'
           - 'Windows Latest (arm64)'
-      debug-enabled:
-        type: boolean
-        description: 'Debug with SSH. Select OS in the list!'
-        required: true
-        default: true
 
 jobs:
   common-tests:
     name: Test
     uses: ./.github/workflows/common-tests.yaml
+    if: inputs.os == ''
+
+  debug:
+    name: Debug
+    uses: ./.github/workflows/debug.yaml
+    if: inputs.os != ''
     with:
       debug-enabled: ${{ inputs.debug-enabled || false }}
       run-os: >-
@@ -43,6 +42,5 @@ jobs:
           inputs.os == 'macOS Latest (arm64)' && 'macos-latest' ||
           inputs.os == 'macOS 13 (amd64)' && 'macos-13' ||
           inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
-          inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm' || 
-          ''
+          inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm'
         }}

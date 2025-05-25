@@ -1,25 +1,14 @@
 name: Test
 on:
   workflow_call:
-    inputs:
-      debug-enabled:
-        description: 'Debug with SSH'
-        type: boolean
-        required: false
-        default: false
-      os:
-        description: 'OS to run'
-        type: string
-        required: true
-        default: '' # Empty to run on all os in matrix.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   test:
     name: Test ${{ matrix.name }}
-    if: inputs.debug-enabled == 'false' && (inputs.os == '' || inputs.os == matrix.os)
     strategy:
       matrix:
         include:
@@ -60,8 +49,6 @@ jobs:
 
   lint:
     name: Lint code
-    # Only run this job if we're in normal mode OR this is the debug OS
-    if: inputs.debug-enabled == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,32 +61,3 @@ jobs:
       - name: Test
         id: run-tests
         run: make lint
-
-  debug:
-    name: Debug code
-    # Only run this job if we're in normal mode OR this is the debug OS
-    if: inputs.debug-enabled == 'true'
-    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: OS Info
-        uses: ./.github/actions/os-info
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Prepare dependencies
-        run: |
-          go install github.com/go-delve/delve/cmd/dlv@latest
-          go mod download
-
-      - name: Setup debug session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
-
-      - name: Fail in debug mode
-        run: exit 1
