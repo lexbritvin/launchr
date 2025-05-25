@@ -3,39 +3,23 @@ on:
   workflow_call:
     inputs:
       debug-enabled:
+        description: 'Debug with SSH'
         type: boolean
-        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         required: false
         default: false
-      debug-os:
-        description: 'Operating System to debug'
-        required: true
-        default: ''
+      os:
+        description: 'OS to run'
         type: string
+        required: true
+        default: '' # Empty to run on all os in matrix.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  debug-check:
-    name: Debug Mode Check
-    runs-on: ubuntu-latest
-    outputs:
-      enabled: ${{ inputs.debug-enabled }}
-      os: ${{ inputs.debug-os || '' }}
-    steps:
-      - name: Check Debug Mode
-        run: |
-          if [ "${{ inputs.debug-enabled }}" == "true" ]; then
-            echo "Debug mode enabled - will run only on ${{ inputs.debug-os }}"
-          else
-            echo "Normal mode"
-          fi
-
   test:
     name: Test ${{ matrix.name }}
-    needs: [ debug-check ]
-    if: needs.debug-check.outputs.enabled == 'false'
+    if: inputs.debug-enabled == 'false' && (inputs.os == '' || inputs.os == matrix.os)
     strategy:
       matrix:
         include:
@@ -70,22 +54,14 @@ jobs:
         run: go mod download
 
       - name: Test
-        if: needs.debug-check.outputs.enabled == 'false'
         id: run-tests
         run: |
           go test ./...
 
-      - name: Setup debug session
-        if: needs.debug-check.outputs.enabled == 'true'
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
-
   lint:
     name: Lint code
-    needs: [ debug-check ]
     # Only run this job if we're in normal mode OR this is the debug OS
-    if: needs.debug-check.outputs.enabled == 'false'
+    if: inputs.debug-enabled == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -101,10 +77,9 @@ jobs:
 
   debug:
     name: Debug code
-    needs: [ debug-check ]
     # Only run this job if we're in normal mode OR this is the debug OS
-    if: needs.debug-check.outputs.enabled == 'true'
-    runs-on: ${{ needs.debug-check.outputs.os }}
+    if: inputs.debug-enabled == 'true'
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 

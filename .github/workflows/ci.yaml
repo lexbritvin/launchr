@@ -11,23 +11,24 @@ on:
       - 'docs/**'
   workflow_dispatch:
     inputs:
-      debug-enabled:
-        type: boolean
-        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+      os:
+        description: 'OS for tests'
         required: true
-        default: false
-      debug-os:
-        description: 'Operating System'
-        required: true
-        default: 'Ubuntu LTS (amd64)'
+        default: '- All -'
         type: choice
         options:
+          - '- All -'
           - 'Ubuntu LTS (amd64)'
           - 'Ubuntu LTS (arm64)'
           - 'macOS Latest (arm64)'
           - 'macOS 13 (amd64)'
           - 'Windows Latest (amd64)'
           - 'Windows Latest (arm64)'
+      debug-enabled:
+        type: boolean
+        description: 'Debug with SSH. Select OS in the list!'
+        required: true
+        default: true
 
 jobs:
   common-tests:
@@ -35,14 +36,13 @@ jobs:
     uses: ./.github/workflows/common-tests.yaml
     with:
       debug-enabled: ${{ inputs.debug-enabled || false }}
-      debug-os: >-
+      run-os: >-
         ${{
-          inputs.debug-os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
-          inputs.debug-os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
-          inputs.debug-os == 'macOS Latest (arm64)' && 'macos-latest' ||
-          inputs.debug-os == 'macOS 13 (amd64)' && 'macos-13' ||
-          inputs.debug-os == 'Windows Latest (amd64)' && 'windows-latest' ||
-          inputs.debug-os == 'Windows Latest (arm64)' && 'windows-11-arm' || 
+          inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
+          inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
+          inputs.os == 'macOS Latest (arm64)' && 'macos-latest' ||
+          inputs.os == 'macOS 13 (amd64)' && 'macos-13' ||
+          inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
+          inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm' || 
           ''
         }}
-    
