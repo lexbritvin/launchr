@@ -35,8 +35,7 @@ jobs:
   test:
     name: Test ${{ matrix.name }}
     needs: [ debug-check ]
-    # Only run this job if we're in normal mode OR this is the debug OS
-    if: (!needs.debug-check.outputs.enabled) || (needs.debug-check.outputs.enabled == 'true' && matrix.os == needs.debug-check.outputs.os)
+    if: needs.debug-check.outputs.enabled == 'false'
     strategy:
       matrix:
         include:
@@ -68,21 +67,19 @@ jobs:
           go-version: 'stable'
 
       - name: Prepare dependencies
-        run: |
-          go install github.com/go-delve/delve/cmd/dlv@latest
-          go mod download
-
-      - name: Setup debug session
-        if: needs.debug-check.outputs.enabled == 'true'
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+        run: go mod download
 
       - name: Test
         if: needs.debug-check.outputs.enabled == 'false'
         id: run-tests
         run: |
           go test ./...
+
+      - name: Setup debug session
+        if: needs.debug-check.outputs.enabled == 'true'
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
 
   lint:
     name: Lint code
@@ -101,3 +98,33 @@ jobs:
       - name: Test
         id: run-tests
         run: make lint
+
+  debug:
+    name: Debug code
+    needs: [ debug-check ]
+    # Only run this job if we're in normal mode OR this is the debug OS
+    if: needs.debug-check.outputs.enabled == 'true'
+    runs-on: ${{ needs.debug-check.outputs.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OS Info
+        uses: ./.github/actions/os-info
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Prepare dependencies
+        run: |
+          go install github.com/go-delve/delve/cmd/dlv@latest
+          go mod download
+
+      - name: Setup debug session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
+      - name: Fail in debug mode
+        run: exit 1
