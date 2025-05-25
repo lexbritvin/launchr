@@ -47,11 +47,11 @@ jobs:
           detached: true
 
   display-debug-info:
-    name: 👉👉👉 How to connect 👈👈👈
+    name: 👉 How to connect 👈
     needs: setup-tmate
     runs-on: ubuntu-latest
     steps:
-      - name: 👉👉👉 Connection information 👈👈👈
+      - name: 👉 Connection information 👈
         run: |
           echo -e "\e[1;36m📝 Debug Session Information\e[0m"
           echo -e "\e[1;31m⚠️ IMPORTANT\e[0m"

@@ -25,12 +25,12 @@ on:
 
 jobs:
   common-tests:
-    name: Test
+    name: 🛡 Test
     uses: ./.github/workflows/common-tests.yaml
     if: inputs.os == ''
 
   debug:
-    name: Debug
+    name: 🚧 Debug
     uses: ./.github/workflows/debug.yaml
     if: inputs.os != ''
     with:
