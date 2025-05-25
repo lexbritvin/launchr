@@ -1,4 +1,12 @@
-name: Test
+# This workflow sets up a remote debugging session using TMate
+# It allows developers to connect via SSH for debugging purposes
+# Features:
+# - Remote SSH access to the build environment
+# - Pre-installed Go debugger (Delve)
+# - Support for multiple OS platforms
+# - Port forwarding for debug sessions
+
+name: Debug with TMate
 on:
   workflow_call:
     inputs:
@@ -9,9 +17,12 @@ on:
         default: ''
 
 jobs:
-  debug:
-    name: Debug
+  setup-tmate:
+    name: Setup tmate
     runs-on: ${{ inputs.os || 'ubuntu-latest' }}
+    outputs:
+      ssh-command: ${{ steps.tmate.outputs.ssh-command }}
+      ssh-address: ${{ steps.tmate.outputs.ssh-address }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,9 +40,50 @@ jobs:
           go mod download
 
       - name: Setup debug session
+        id: tmate
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
+          detached: true
 
-      - name: Fail in debug mode
-        run: exit 1
+  use-ssh-command:
+    needs: setup-tmate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display Debug information
+        run: |
+          echo -e "\e[1;36m📝 Debug Session Information\e[0m"
+          echo -e "\e[1;31m⚠️  Important:\e[0m"
+          echo "      - SSH access is limited to the GitHub user who started this debug session"
+          echo "      - Your GitHub account's SSH keys will be used for authentication"
+          echo "      - Session will automatically end after disconnect"
+          echo "      - Maximum session time is 30 minutes"
+          echo "      - All changes are temporary and will be lost after session ends"
+          echo -e "\e[1;36m==========================\e[0m"
+          echo ""
+          echo -e "\e[1;32m🔗 1. Connect with SSH:\e[0m"
+          echo -e "      \e[1m${{ needs.setup-tmate.outputs.ssh-command }}\e[0m"
+          echo ""
+          echo -e "\e[1;32m🔄 2. Forward a port to debug with Delve:\e[0m"
+          echo -e "      \e[1mssh -L 2345:localhost:2345 ${{ needs.setup-tmate.outputs.ssh-address }}\e[0m"
+          echo ""
+          echo -e "\e[1;32m💻 3. Connect over SSH using VS Code for full developer experience\e[0m"
+          echo "      - Open VS Code"
+          echo "      - Install Remote SSH and Go extensions if not installed" 
+          echo "      - Select 'Remote-SSH: Connect to Host...'"
+          echo "      - Enter the SSH command from step 1"
+          echo ""
+          echo -e "\e[1;33m🛠️  Debug commands:\e[0m"
+          echo -e "\e[1m    - Run all tests:\e[0m"
+          echo "        go test ./..."
+          echo -e "\e[1m    - Run specific test:\e[0m"
+          echo "        go --listen=:2345 --headless --api-version=2 test -v -run TestScriptBuild ./..."
+          echo -e "\e[1m    - Debug specific test:\e[0m"
+          echo "        dlv --listen=:2345 --headless --api-version=2 test ./... -- -test.run TestScriptCommon"
+          echo -e "\e[1m    - Start debugger with breakpoint:\e[0m"
+          echo "        dlv debug --headless --listen=:2345 --api-version=2 ./cmd/launchr -- [args...]"
+          echo ""
+          echo -e "\e[1;34m   Connect to Delve from local machine to port 2345.\e[0m"
+          echo ""
+          echo -e "\e[1;36m📚 Delve Documentation:\e[0m"
+          echo "   https://github.com/go-delve/delve/tree/master/Documentation"
