@@ -19,14 +19,15 @@ on:
 jobs:
   debug:
     name: Debug Environment
-    runs-on: ${{
-      github.event.inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
-      github.event.inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
-      github.event.inputs.os == 'macOS Latest (arm64)' && 'macos-latest' ||
-      github.event.inputs.os == 'macOS 13 (amd64)' && 'macos-13' ||
-      github.event.inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
-      github.event.inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm'
-    }}
+    runs-on: >-
+      ${{ 
+        github.event.inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' || 
+        github.event.inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' || 
+        github.event.inputs.os == 'macOS Latest (arm64)' && 'macos-latest' || 
+        github.event.inputs.os == 'macOS 13 (amd64)' && 'macos-13' || 
+        github.event.inputs.os == 'Windows Latest (amd64)' && 'windows-latest' || 
+        github.event.inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm' 
+      }}
 
     steps:
       - name: Checkout repository
