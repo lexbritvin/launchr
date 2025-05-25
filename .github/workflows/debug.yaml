@@ -18,7 +18,7 @@ on:
 
 jobs:
   setup-tmate:
-    name: 🛠 Setup tmate 🛠️
+    name: 👉 How to connect 👈
     runs-on: ${{ inputs.os || 'ubuntu-latest' }}
     outputs:
       ssh-command: ${{ steps.tmate.outputs.ssh-command }}
@@ -39,19 +39,15 @@ jobs:
           go install github.com/go-delve/delve/cmd/dlv@latest
           go mod download
 
-      - name: Setup tmate session
+      - name: 🛠 Setup tmate session 🛠
         id: tmate
         uses: mxschmitt/action-tmate@v3
         with:
           detached: true
           limit-access-to-actor: true
 
-  display-debug-info:
-    name: 👉 How to connect 👈
-    needs: setup-tmate
-    runs-on: ubuntu-latest
-    steps:
-      - name: 👉 Connection information 👈
+      - name: 👉 How to connect 👈
+        shell: bash
         run: |
           echo -e "\e[1;36m📝 Debug Session Information\e[0m"
           echo -e "\e[1;31m⚠️ IMPORTANT ⚠️\e[0m"
@@ -63,10 +59,10 @@ jobs:
           echo -e "\e[1;36m========================================================\e[0m"
           echo ""
           echo -e "\e[1;32m🔗 1. Connect with SSH:\e[0m"
-          echo -e "      \e[1m${{ needs.setup-tmate.outputs.ssh-command }}\e[0m"
+          echo -e "      \e[1m${{ steps.tmate.outputs.ssh-command }}\e[0m"
           echo ""
           echo -e "\e[1;32m🔄 2. Forward a port to debug with Delve:\e[0m"
-          echo -e "      \e[1mssh -L 2345:localhost:2345 ${{ needs.setup-tmate.outputs.ssh-address }}\e[0m"
+          echo -e "      \e[1mssh -L 2345:localhost:2345 ${{ steps.tmate.outputs.ssh-address }}\e[0m"
           echo ""
           echo -e "\e[1;32m💻 3. Connect over SSH using VS Code for full developer experience\e[0m"
           echo "      - Open VS Code"
