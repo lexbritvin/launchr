@@ -21,7 +21,7 @@ jobs:
     name: Debug Mode Check
     runs-on: ubuntu-latest
     outputs:
-      enabled: ${{ !inputs.debug-enabled }}
+      enabled: ${{ inputs.debug-enabled }}
       os: ${{ inputs.debug-os || '' }}
     steps:
       - name: Check Debug Mode
