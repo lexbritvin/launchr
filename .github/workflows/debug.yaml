@@ -6,7 +6,7 @@
 # - Support for multiple OS platforms
 # - Port forwarding for debug sessions
 
-name: Debug with TMate
+name: Debug with SSH
 on:
   workflow_call:
     inputs:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   setup-tmate:
-    name: Setup tmate
+    name: 🛠 Setup tmate 🛠️
     runs-on: ${{ inputs.os || 'ubuntu-latest' }}
     outputs:
       ssh-command: ${{ steps.tmate.outputs.ssh-command }}
@@ -46,20 +46,21 @@ jobs:
           limit-access-to-actor: true
           detached: true
 
-  use-ssh-command:
+  display-debug-info:
+    name: 👉👉👉 How to connect 👈👈👈
     needs: setup-tmate
     runs-on: ubuntu-latest
     steps:
-      - name: Display Debug information
+      - name: 👉👉👉 Connection information 👈👈👈
         run: |
           echo -e "\e[1;36m📝 Debug Session Information\e[0m"
-          echo -e "\e[1;31m⚠️  Important:\e[0m"
-          echo "      - SSH access is limited to the GitHub user who started this debug session"
-          echo "      - Your GitHub account's SSH keys will be used for authentication"
-          echo "      - Session will automatically end after disconnect"
-          echo "      - Maximum session time is 30 minutes"
-          echo "      - All changes are temporary and will be lost after session ends"
-          echo -e "\e[1;36m==========================\e[0m"
+          echo -e "\e[1;31m⚠️ IMPORTANT\e[0m"
+          echo "    - SSH access is limited to the GitHub user who started this debug session"
+          echo "    - Your GitHub account's SSH keys will be used for authentication"
+          echo "    - Session will automatically end after disconnect"
+          echo "    - Maximum session time is 30 minutes"
+          echo "    - All changes are temporary and will be lost after session ends"
+          echo -e "\e[1;36m========================================================\e[0m"
           echo ""
           echo -e "\e[1;32m🔗 1. Connect with SSH:\e[0m"
           echo -e "      \e[1m${{ needs.setup-tmate.outputs.ssh-command }}\e[0m"
@@ -73,17 +74,19 @@ jobs:
           echo "      - Select 'Remote-SSH: Connect to Host...'"
           echo "      - Enter the SSH command from step 1"
           echo ""
-          echo -e "\e[1;33m🛠️  Debug commands:\e[0m"
+          echo -e "\e[1;33m🛠️ Debug commands:\e[0m"
           echo -e "\e[1m    - Run all tests:\e[0m"
           echo "        go test ./..."
           echo -e "\e[1m    - Run specific test:\e[0m"
           echo "        go --listen=:2345 --headless --api-version=2 test -v -run TestScriptBuild ./..."
           echo -e "\e[1m    - Debug specific test:\e[0m"
           echo "        dlv --listen=:2345 --headless --api-version=2 test ./... -- -test.run TestScriptCommon"
-          echo -e "\e[1m    - Start debugger with breakpoint:\e[0m"
+          echo -e "\e[1m    - Start debugger for the whole application:\e[0m"
           echo "        dlv debug --headless --listen=:2345 --api-version=2 ./cmd/launchr -- [args...]"
           echo ""
-          echo -e "\e[1;34m   Connect to Delve from local machine to port 2345.\e[0m"
+          echo -e "\e[1;34m    Connect to Delve from local machine to port 2345.\e[0m"
           echo ""
           echo -e "\e[1;36m📚 Delve Documentation:\e[0m"
           echo "   https://github.com/go-delve/delve/tree/master/Documentation"
+          echo ""
+          echo -e "\e[1;32m🚀 Happy coding! 💻 🎉\e[0m"
