@@ -26,8 +26,8 @@ jobs:
           'Ubuntu LTS (arm64)': 'ubuntu-24.04-arm',
           'macOS Latest (arm64)': 'macos-latest',
           'macOS 13 (amd64)': 'macos-13',
-          'Windows Latest (amd64)': 'windows-latest'
-          'Windows Latest (arm64)': 'windows-11-arm'
+          'Windows Latest (amd64)': 'windows-latest',
+          'Windows Latest (arm64)': 'windows-11-arm',
         }[github.event.inputs.os]
       }}
 
