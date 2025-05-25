@@ -39,12 +39,12 @@ jobs:
           go install github.com/go-delve/delve/cmd/dlv@latest
           go mod download
 
-      - name: Setup debug session
+      - name: Setup tmate session
         id: tmate
         uses: mxschmitt/action-tmate@v3
         with:
-          limit-access-to-actor: true
           detached: true
+          limit-access-to-actor: true
 
   display-debug-info:
     name: 👉 How to connect 👈
@@ -54,7 +54,7 @@ jobs:
       - name: 👉 Connection information 👈
         run: |
           echo -e "\e[1;36m📝 Debug Session Information\e[0m"
-          echo -e "\e[1;31m⚠️ IMPORTANT\e[0m"
+          echo -e "\e[1;31m⚠️ IMPORTANT ⚠️\e[0m"
           echo "    - SSH access is limited to the GitHub user who started this debug session"
           echo "    - Your GitHub account's SSH keys will be used for authentication"
           echo "    - Session will automatically end after disconnect"
@@ -84,7 +84,9 @@ jobs:
           echo -e "\e[1m    - Start debugger for the whole application:\e[0m"
           echo "        dlv debug --headless --listen=:2345 --api-version=2 ./cmd/launchr -- [args...]"
           echo ""
-          echo -e "\e[1;34m    Connect to Delve from local machine to port 2345.\e[0m"
+          echo -e "\e[1;34mConnect to Delve from local machine to port 2345.\e[0m"
+          echo "  - VS Code: https://github.com/golang/vscode-go/blob/master/docs/debugging.md"
+          echo "  - GoLand: https://www.jetbrains.com/help/go/attach-to-running-go-processes-with-debugger.html#attach-to-a-process-on-a-remote-machine"
           echo ""
           echo -e "\e[1;36m📚 Delve Documentation:\e[0m"
           echo "   https://github.com/go-delve/delve/tree/master/Documentation"
