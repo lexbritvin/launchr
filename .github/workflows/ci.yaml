@@ -34,8 +34,7 @@ jobs:
     uses: ./.github/workflows/debug.yaml
     if: inputs.os != ''
     with:
-      debug-enabled: ${{ inputs.debug-enabled || false }}
-      run-os: >-
+      os: >-
         ${{
           inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
           inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
