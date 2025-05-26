@@ -1,194 +1,312 @@
-name: Windows Docker with Linux Sidecar
+name: Windows with Linux Sidecar
 
 on:
   workflow_dispatch:
 
 jobs:
-  docker-sidecar:
+  linux-sidecar:
     runs-on: ubuntu-latest
     outputs:
-      docker-url: ${{ steps.serveo.outputs.docker-url }}
-    steps:
-      - name: Start Docker daemon with TCP binding
-        run: |
-          # Stop default Docker daemon
-          sudo systemctl stop docker
-          
-          # Start Docker daemon with TCP binding (insecure for simplicity)
-          sudo dockerd \
-            --host=unix:///var/run/docker.sock \
-            --host=tcp://0.0.0.0:2375 \
-            --insecure-registry 0.0.0.0/0 \
-            --tls=false &
-          
-          # Wait for Docker daemon to start
-          sleep 10
-          
-          # Verify Docker is running
-          docker version
-
-      - name: Setup serveo tunnel
-        id: serveo
-        run: |
-          # Install expect for automation
-          sudo apt-get update && sudo apt-get install -y expect
-          
-          # Create expect script to handle serveo interaction
-          cat > serveo_tunnel.exp << 'EOF'
-          #!/usr/bin/expect -f
-          set timeout 30
-          
-          spawn ssh -o StrictHostKeyChecking=no -R 80:localhost:2375 serveo.net
-          
-          expect {
-            "Forwarding HTTP traffic from" {
-              # Extract the URL from the output
-              expect -re "https://(\[a-zA-Z0-9\]+\.serveo\.net)"
-              set url $expect_out(1,string)
-              puts "DOCKER_URL=https://$url"
-          
-              # Keep the tunnel alive
-              expect eof
-            }
-            "Permission denied" {
-              puts "ERROR: Permission denied"
-              exit 1
-            }
-            timeout {
-              puts "ERROR: Timeout waiting for serveo"
-              exit 1
-            }
-          }
-          EOF
-          
-          chmod +x serveo_tunnel.exp
-          
-          # Run the tunnel in background and capture output
-          timeout 300 ./serveo_tunnel.exp > serveo_output.log 2>&1 &
-          SERVEO_PID=$!
-          
-          # Wait a bit for tunnel to establish
-          sleep 15
-          
-          # Extract the URL from the log
-          if grep -q "DOCKER_URL=" serveo_output.log; then
-            DOCKER_URL=$(grep "DOCKER_URL=" serveo_output.log | cut -d'=' -f2)
-            echo "docker-url=$DOCKER_URL" >> $GITHUB_OUTPUT
-            echo "Docker daemon accessible at: $DOCKER_URL"
-          else
-            echo "Failed to establish serveo tunnel"
-            cat serveo_output.log
-            exit 1
-          fi
-          
-          # Keep the process running for the duration of the workflow
-          echo $SERVEO_PID > serveo.pid
-
-      - name: Keep tunnel alive
-        run: |
-          # This step keeps running to maintain the tunnel
-          # The job will continue until the workflow completes
-          while kill -0 $(cat serveo.pid) 2>/dev/null; do
-            sleep 30
-            echo "Tunnel still active..."
-          done
-
-  windows-docker:
-    runs-on: windows-latest
-    needs: docker-sidecar
+      serveo_hostname: ${{ steps.setup_tunnel.outputs.serveo_hostname }}
+      serveo_port: ${{ steps.setup_tunnel.outputs.serveo_port }}
+      ready: ${{ steps.setup_tunnel.outputs.ready }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Docker CLI
+      - name: Generate Docker TLS certificates
         run: |
-          # Download Docker CLI for Windows
-          Invoke-WebRequest -Uri "https://download.docker.com/win/static/stable/x86_64/docker-24.0.7.zip" -OutFile "docker.zip"
-          Expand-Archive -Path "docker.zip" -DestinationPath "."
+          mkdir -p ~/.docker/certs
+          cd ~/.docker/certs
           
-          # Add Docker to PATH
-          $env:PATH += ";$PWD\docker"
+          # Generate CA key and certificate
+          openssl genrsa -out ca-key.pem 4096
+          openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem -subj "/CN=docker-ca"
           
-          # Verify Docker CLI installation
-          .\docker\docker.exe version --format json
+          # Generate server key and certificate
+          openssl genrsa -out server-key.pem 4096
+          openssl req -new -key server-key.pem -out server.csr -subj "/CN=docker-server"
+          
+          # Create extfile with SAN for serveo.net
+          echo "subjectAltName=DNS:*.serveo.net,DNS:localhost,IP:127.0.0.1" > extfile.cnf
+          echo "extendedKeyUsage=serverAuth" >> extfile.cnf
+          
+          # Sign the server certificate
+          openssl x509 -req -days 365 -in server.csr -CA ca.pem -CAkey ca-key.pem \
+            -CAcreateserial -out server-cert.pem -extfile extfile.cnf
+          
+          # Generate client key and certificate
+          openssl genrsa -out client-key.pem 4096
+          openssl req -new -key client-key.pem -out client.csr -subj "/CN=docker-client"
+          
+          # Create client extfile
+          echo "extendedKeyUsage=clientAuth" > extfile-client.cnf
+          
+          # Sign the client certificate
+          openssl x509 -req -days 365 -in client.csr -CA ca.pem -CAkey ca-key.pem \
+            -CAcreateserial -out client-cert.pem -extfile extfile-client.cnf
+          
+          # Set proper permissions
+          chmod 0400 ca-key.pem server-key.pem client-key.pem
+          chmod 0444 ca.pem server-cert.pem client-cert.pem
 
-      - name: Configure Docker to use remote daemon
+      - name: Configure Docker daemon with TLS
         run: |
-          $dockerUrl = "${{ needs.docker-sidecar.outputs.docker-url }}"
+          sudo mkdir -p /etc/docker/certs.d
+          sudo cp ~/.docker/certs/ca.pem ~/.docker/certs/server-cert.pem ~/.docker/certs/server-key.pem /etc/docker/certs.d/
           
-          if ([string]::IsNullOrEmpty($dockerUrl)) {
-            Write-Error "Docker URL not provided from sidecar job"
+          # Create Docker daemon config with TLS enabled
+          echo '{
+            "tls": true,
+            "tlscacert": "/etc/docker/certs.d/ca.pem",
+            "tlscert": "/etc/docker/certs.d/server-cert.pem",
+            "tlskey": "/etc/docker/certs.d/server-key.pem",
+            "hosts": ["tcp://0.0.0.0:2376", "unix:///var/run/docker.sock"]
+          }' | sudo tee /etc/docker/daemon.json
+          
+          # Stop Docker service
+          sudo systemctl stop docker
+          
+          # Start Docker with new configuration
+          sudo dockerd --config-file /etc/docker/daemon.json &
+          
+          # Wait for Docker to start
+          sleep 10
+          sudo docker info || (echo "Docker failed to start" && exit 1)
+
+      - name: Install SSH and setup serveo tunnel
+        id: setup_tunnel
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client
+          
+          # Start serveo tunnel with port 0 (random port assignment)
+          ssh -o StrictHostKeyChecking=no -R 0:localhost:2376 serveo.net > serveo_output.txt 2>&1 &
+          sleep 5
+          
+          # Extract the assigned hostname and port
+          cat serveo_output.txt
+          SERVEO_HOSTNAME=$(grep -oP '(\w+\.serveo\.net)' serveo_output.txt | head -1)
+          SERVEO_PORT=$(grep -oP 'Forwarding TCP connections from [^:]+:(\d+)' serveo_output.txt | grep -oP ':\d+' | tr -d ':')
+          
+          if [ -z "$SERVEO_HOSTNAME" ] || [ -z "$SERVEO_PORT" ]; then
+            echo "Failed to extract serveo hostname or port"
+            cat serveo_output.txt
+            exit 1
+          fi
+          
+          # Set outputs for job
+          echo "serveo_hostname=$SERVEO_HOSTNAME" >> $GITHUB_OUTPUT
+          echo "serveo_port=$SERVEO_PORT" >> $GITHUB_OUTPUT
+          echo "ready=true" >> $GITHUB_OUTPUT
+          
+          echo "Docker daemon available at: $SERVEO_HOSTNAME:$SERVEO_PORT"
+
+      - name: Validate Docker daemon is accessible
+        run: |
+          # Test using Docker client with TLS
+          DOCKER_TLS_VERIFY=1 DOCKER_HOST=tcp://localhost:2376 \
+          DOCKER_CERT_PATH=~/.docker/certs docker info
+
+      - name: Share connection details with Windows job
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-certs
+          path: |
+            ~/.docker/certs/ca.pem
+            ~/.docker/certs/client-cert.pem
+            ~/.docker/certs/client-key.pem
+          retention-days: 1
+
+      - name: Create keep-alive process
+        run: |
+          # Start a process to keep serveo connection alive
+          while true; do
+            echo "$(date): Keeping serveo tunnel alive..."
+            sleep 30
+          done &
+          # Save the PID so we can kill it later if needed
+          echo $! > serveo_keepalive.pid
+
+      - name: Wait for Windows job to complete
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MAX_ATTEMPTS = 120;  // 1 hour max wait (30 seconds * 120)
+            const DELAY_MS = 30000;    // 30 seconds between checks
+            
+            console.log('Waiting for Windows job to complete...');
+            
+            async function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            async function checkWindowsJobStatus() {
+              for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                try {
+                  console.log(`Checking Windows job status (Attempt ${attempt}/${MAX_ATTEMPTS})...`);
+                  
+                  // Get the current workflow run
+                  const run = await github.rest.actions.getWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: context.runId
+                  });
+                  
+                  // Get all jobs for this run
+                  const { data: jobsResponse } = await github.rest.actions.listJobsForWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: context.runId
+                  });
+                  
+                  const windowsJob = jobsResponse.jobs.find(job => job.name === 'windows-job');
+                  
+                  if (!windowsJob) {
+                    console.log('Windows job not found yet, waiting...');
+                  } else {
+                    console.log(`Windows job status: ${windowsJob.status}, conclusion: ${windowsJob.conclusion}`);
+                    
+                    // Check if Windows job has completed
+                    if (windowsJob.status === 'completed') {
+                      console.log('Windows job has completed, Linux sidecar can finish now.');
+                      return true;
+                    }
+                    
+                    // Check if the workflow run is complete (all jobs)
+                    if (run.data.status === 'completed') {
+                      console.log('Workflow run has completed, Linux sidecar can finish now.');
+                      return true;
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Error checking Windows job status: ${error.message}`);
+                }
+                
+                if (attempt < MAX_ATTEMPTS) {
+                  console.log(`Waiting ${DELAY_MS/1000} seconds before next check...`);
+                  await sleep(DELAY_MS);
+                }
+              }
+              
+              console.log('Maximum wait time reached. Exiting.');
+              return false;
+            }
+            
+            await checkWindowsJobStatus();
+
+  windows-job:
+    runs-on: windows-latest
+    # No "needs" here to ensure parallel execution
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for Linux sidecar to be ready
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MAX_ATTEMPTS = 30;   // 5 minutes max wait (10 seconds * 30)
+            const DELAY_MS = 10000;    // 10 seconds between checks
+            
+            console.log('Waiting for Linux sidecar to be ready...');
+            
+            async function sleep(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            async function waitForSidecar() {
+              for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+                try {
+                  console.log(`Checking Linux sidecar status (Attempt ${attempt}/${MAX_ATTEMPTS})...`);
+                  
+                  // Get all jobs for this run
+                  const { data: jobsResponse } = await github.rest.actions.listJobsForWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: context.runId
+                  });
+                  
+                  const sidecarJob = jobsResponse.jobs.find(job => job.name === 'linux-sidecar');
+                  
+                  if (!sidecarJob) {
+                    console.log('Linux sidecar job not found yet, waiting...');
+                  } else {
+                    console.log(`Linux sidecar job status: ${sidecarJob.status}`);
+                    
+                    // Find the "Install SSH and setup serveo tunnel" step
+                    const setupStep = sidecarJob.steps.find(step => 
+                      step.name === 'Install SSH and setup serveo tunnel'
+                    );
+                    
+                    if (setupStep && setupStep.status === 'completed') {
+                      console.log('Linux sidecar is ready!');
+                      return true;
+                    } else if (setupStep) {
+                      console.log(`Setup tunnel step status: ${setupStep.status}`);
+                    } else {
+                      console.log('Setup tunnel step not found yet.');
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Error checking sidecar status: ${error.message}`);
+                }
+                
+                if (attempt < MAX_ATTEMPTS) {
+                  console.log(`Waiting ${DELAY_MS/1000} seconds before next check...`);
+                  await sleep(DELAY_MS);
+                }
+              }
+              
+              throw new Error('Timed out waiting for Linux sidecar to be ready');
+            }
+            
+            return await waitForSidecar();
+
+      - name: Download Docker certificates
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-certs
+          path: docker-certs
+
+      - name: Setup Docker TLS certs
+        run: |
+          # Create Docker certs directory
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker"
+          Copy-Item -Path "docker-certs\*" -Destination "$env:USERPROFILE\.docker" -Force
+          
+          # Use job outputs from linux-sidecar
+          $serveoHostname = "${{ jobs.linux-sidecar.outputs.serveo_hostname }}"
+          $serveoPort = "${{ jobs.linux-sidecar.outputs.serveo_port }}"
+          
+          # Verify we have the connection details
+          if (-not $serveoHostname -or -not $serveoPort) {
+            Write-Host "Failed to get connection details from linux-sidecar job outputs"
             exit 1
           }
           
-          Write-Host "Configuring Docker to use remote daemon at: $dockerUrl"
+          Write-Host "Connecting to Docker daemon at: $serveoHostname`:$serveoPort"
           
-          # Set Docker host environment variable
-          $env:DOCKER_HOST = $dockerUrl.Replace("https://", "tcp://").Replace("http://", "tcp://") + ":80"
-          
-          # For subsequent steps, we'll use the docker CLI with explicit host
-          echo "DOCKER_HOST=$env:DOCKER_HOST" >> $env:GITHUB_ENV
-          
-          Write-Host "Docker host configured: $env:DOCKER_HOST"
+          # Set Docker environment variables
+          echo "DOCKER_HOST=tcp://$serveoHostname`:$serveoPort" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "DOCKER_TLS_VERIFY=1" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "DOCKER_CERT_PATH=$env:USERPROFILE\.docker" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
 
-      - name: Test Docker connection
+      - name: Test Docker connection to Linux sidecar
         run: |
+          # Display environment variables
+          echo "DOCKER_HOST: $env:DOCKER_HOST"
+          echo "DOCKER_TLS_VERIFY: $env:DOCKER_TLS_VERIFY"
+          echo "DOCKER_CERT_PATH: $env:DOCKER_CERT_PATH"
+          
           # Test Docker connection
-          .\docker\docker.exe --host $env:DOCKER_HOST version
-          .\docker\docker.exe --host $env:DOCKER_HOST info
-
-      - name: Run Linux containers on Windows
-        run: |
-          Write-Host "Running Linux containers from Windows job..."
+          docker info
           
-          # Pull and run a simple Linux container
-          .\docker\docker.exe --host $env:DOCKER_HOST pull alpine:latest
-          .\docker\docker.exe --host $env:DOCKER_HOST run --rm alpine:latest echo "Hello from Linux container running via Windows!"
-          
-          # Run a more complex example with nginx
-          .\docker\docker.exe --host $env:DOCKER_HOST pull nginx:alpine
-          $containerId = .\docker\docker.exe --host $env:DOCKER_HOST run -d -p 8080:80 nginx:alpine
-          
-          Write-Host "Started nginx container: $containerId"
-          
-          # Wait a moment for container to start
-          Start-Sleep -Seconds 5
-          
-          # Check if container is running
-          .\docker\docker.exe --host $env:DOCKER_HOST ps
-          
-          # Stop the container
-          .\docker\docker.exe --host $env:DOCKER_HOST stop $containerId
-          Write-Host "Stopped nginx container"
-
-      - name: Build custom Docker image
-        run: |
-          # Create a simple Dockerfile
-          @"
-          FROM ubuntu:20.04
-          RUN apt-get update && apt-get install -y curl
-          CMD ["echo", "Custom Linux image built from Windows!"]
-          "@ | Out-File -FilePath "Dockerfile" -Encoding utf8
-          
-          # Build the image
-          .\docker\docker.exe --host $env:DOCKER_HOST build -t custom-linux-app .
-          
-          # Run the custom image
-          .\docker\docker.exe --host $env:DOCKER_HOST run --rm custom-linux-app
-
-      - name: Cleanup
-        if: always()
-        run: |
-          Write-Host "Cleaning up containers and images..."
-          
-          # Stop all running containers
-          $containers = .\docker\docker.exe --host $env:DOCKER_HOST ps -q
-          if ($containers) {
-            .\docker\docker.exe --host $env:DOCKER_HOST stop $containers
-          }
-          
-          # Remove stopped containers
-          .\docker\docker.exe --host $env:DOCKER_HOST container prune -f
-          
-          # Remove unused images
-          .\docker\docker.exe --host $env:DOCKER_HOST image prune -f
+          # Run a simple container via the remote daemon
+          docker run --rm hello-world
+        shell: pwsh
+        env:
+          DOCKER_HOST: ${{ env.DOCKER_HOST }}
+          DOCKER_TLS_VERIFY: ${{ env.DOCKER_TLS_VERIFY }}
+          DOCKER_CERT_PATH: ${{ env.DOCKER_CERT_PATH }}
