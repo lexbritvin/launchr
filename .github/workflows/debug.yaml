@@ -46,16 +46,6 @@ jobs:
     name: 👉 How to connect 👈
     needs: select-os
     runs-on: ${{ needs.select-os.outputs.runner-os || 'ubuntu-latest' }}
-    services:
-      # Docker daemon running in a Linux container
-      docker-daemon:
-        image: docker:dind
-        ports:
-          - 2376:2376
-        options: --privileged
-        env:
-          DOCKER_TLS_CERTDIR: ""
-          DOCKER_HOST: tcp://0.0.0.0:2376
     steps:
       - uses: actions/checkout@v4
 

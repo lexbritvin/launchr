@@ -3,286 +3,192 @@ name: Windows Docker with Linux Sidecar
 on:
   workflow_dispatch:
 
-env:
-  DOCKER_CERT_PATH: /tmp/docker-certs
-  DOCKER_HOST: tcp://localhost:2376
-  DOCKER_TLS_VERIFY: 1
-  SERVEO_SUBDOMAIN: my-app-${{ github.run_id }}
-
 jobs:
-  # Linux sidecar job for port forwarding
-  sidecar:
+  docker-sidecar:
     runs-on: ubuntu-latest
     outputs:
-      tunnel-url: ${{ steps.setup-tunnel.outputs.tunnel-url }}
-      docker-host: ${{ steps.setup-docker.outputs.docker-host }}
+      docker-url: ${{ steps.serveo.outputs.docker-url }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Docker daemon for remote access
-        id: setup-docker
+      - name: Start Docker daemon with TCP binding
         run: |
-          # Create directory for Docker certificates
-          sudo mkdir -p $DOCKER_CERT_PATH
+          # Stop default Docker daemon
+          sudo systemctl stop docker
           
-          # Generate certificates for Docker daemon
-          cd $DOCKER_CERT_PATH
+          # Start Docker daemon with TCP binding (insecure for simplicity)
+          sudo dockerd \
+            --host=unix:///var/run/docker.sock \
+            --host=tcp://0.0.0.0:2375 \
+            --insecure-registry 0.0.0.0/0 \
+            --tls=false &
           
-          # Generate CA private key
-          sudo openssl genrsa -out ca-key.pem 4096
-          
-          # Generate CA certificate
-          sudo openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem -subj "/C=US/ST=State/L=City/O=Org/CN=docker-ca"
-          
-          # Generate server private key
-          sudo openssl genrsa -out server-key.pem 4096
-          
-          # Generate server certificate signing request
-          sudo openssl req -subj "/C=US/ST=State/L=City/O=Org/CN=docker-server" -sha256 -new -key server-key.pem -out server.csr
-          
-          # Generate server certificate
-          echo subjectAltName = DNS:localhost,IP:127.0.0.1,IP:0.0.0.0 | sudo tee extfile.cnf
-          echo extendedKeyUsage = serverAuth | sudo tee -a extfile.cnf
-          sudo openssl x509 -req -days 365 -sha256 -in server.csr -CA ca.pem -CAkey ca-key.pem -out server-cert.pem -extfile extfile.cnf -CAcreateserial
-          
-          # Generate client private key
-          sudo openssl genrsa -out key.pem 4096
-          
-          # Generate client certificate signing request
-          sudo openssl req -subj "/C=US/ST=State/L=City/O=Org/CN=docker-client" -new -key key.pem -out client.csr
-          
-          # Generate client certificate
-          echo extendedKeyUsage = clientAuth | sudo tee extfile-client.cnf
-          sudo openssl x509 -req -days 365 -sha256 -in client.csr -CA ca.pem -CAkey ca-key.pem -out cert.pem -extfile extfile-client.cnf -CAcreateserial
-          
-          # Set proper permissions
-          sudo chmod 400 ca-key.pem key.pem server-key.pem
-          sudo chmod 444 ca.pem server-cert.pem cert.pem
-          
-          # Configure Docker daemon for TLS
-          sudo mkdir -p /etc/docker
-          echo '{
-            "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"],
-            "tls": true,
-            "tlscert": "'$DOCKER_CERT_PATH'/server-cert.pem",
-            "tlskey": "'$DOCKER_CERT_PATH'/server-key.pem",
-            "tlsverify": true,
-            "tlscacert": "'$DOCKER_CERT_PATH'/ca.pem"
-          }' | sudo tee /etc/docker/daemon.json
-          
-          # Restart Docker daemon
-          sudo systemctl restart docker
-          sudo systemctl enable docker
-          
-          # Wait for Docker daemon to be ready
+          # Wait for Docker daemon to start
           sleep 10
-          
-          echo "docker-host=tcp://localhost:2376" >> $GITHUB_OUTPUT
-
-      - name: Setup serveo.net tunnel
-        id: setup-tunnel
-        run: |
-          # Install SSH client if not available
-          which ssh || sudo apt-get update && sudo apt-get install -y openssh-client
-          
-          # Start serveo.net tunnel in background for Docker daemon port
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R $SERVEO_SUBDOMAIN:2376:localhost:2376 serveo.net &
-          TUNNEL_PID=$!
-          echo "TUNNEL_PID=$TUNNEL_PID" >> $GITHUB_ENV
-          
-          # Wait a moment for tunnel to establish
-          sleep 5
-          
-          # Get the tunnel URL
-          TUNNEL_URL="tcp://$SERVEO_SUBDOMAIN.serveo.net:2376"
-          echo "tunnel-url=$TUNNEL_URL" >> $GITHUB_OUTPUT
-          echo "Tunnel established: $TUNNEL_URL"
-
-      - name: Upload Docker certificates
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-certs
-          path: /tmp/docker-certs/
-          retention-days: 1
-
-      - name: Keep sidecar alive
-        run: |
-          echo "Sidecar job running. Tunnel URL: ${{ steps.setup-tunnel.outputs.tunnel-url }}"
-          echo "Docker daemon accessible at: ${{ steps.setup-tunnel.outputs.docker-host }}"
-          
-          # Keep the job alive for the duration of the workflow
-          # This will run until the workflow is cancelled or times out
-          while true; do
-            echo "Sidecar alive at $(date)"
-          
-            # Check if tunnel is still active
-            if ! kill -0 $TUNNEL_PID 2>/dev/null; then
-              echo "Tunnel process died, restarting..."
-              ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -R $SERVEO_SUBDOMAIN:2376:localhost:2376 serveo.net &
-              TUNNEL_PID=$!
-              echo "TUNNEL_PID=$TUNNEL_PID" >> $GITHUB_ENV
-            fi
-          
-            # Check Docker daemon status
-            if ! sudo systemctl is-active --quiet docker; then
-              echo "Docker daemon is not running, restarting..."
-              sudo systemctl restart docker
-            fi
-          
-            sleep 30
-          done
-
-  # Windows job with Docker for Linux containers
-  windows-docker:
-    runs-on: windows-latest
-    needs: sidecar
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Enable Docker Linux containers on Windows
-        run: |
-          # Switch Docker to Linux containers mode
-          & "C:\Program Files\Docker\Docker\DockerCli.exe" -SwitchLinuxEngine
-          
-          # Wait for Docker to switch
-          Start-Sleep -Seconds 30
           
           # Verify Docker is running
           docker version
 
-      - name: Download Docker certificates
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-certs
-          path: C:\docker-certs
-
-      - name: Configure Docker client for remote connection
+      - name: Setup serveo tunnel
+        id: serveo
         run: |
-          # Set environment variables for Docker client
-          $env:DOCKER_HOST = "${{ needs.sidecar.outputs.tunnel-url }}"
-          $env:DOCKER_CERT_PATH = "C:\docker-certs"
-          $env:DOCKER_TLS_VERIFY = "1"
+          # Install expect for automation
+          sudo apt-get update && sudo apt-get install -y expect
           
-          # Make environment variables persistent for this job
-          echo "DOCKER_HOST=${{ needs.sidecar.outputs.tunnel-url }}" >> $env:GITHUB_ENV
-          echo "DOCKER_CERT_PATH=C:\docker-certs" >> $env:GITHUB_ENV
-          echo "DOCKER_TLS_VERIFY=1" >> $env:GITHUB_ENV
+          # Create expect script to handle serveo interaction
+          cat > serveo_tunnel.exp << 'EOF'
+          #!/usr/bin/expect -f
+          set timeout 30
           
-          # Test connection to remote Docker daemon
-          docker version
-          docker info
-
-      - name: Run Docker containers
-        run: |
-          # Test with a simple Linux container
-          docker run --rm hello-world
+          spawn ssh -o StrictHostKeyChecking=no -R 80:localhost:2375 serveo.net
           
-          # Run a more complex example with nginx
-          docker run -d --name test-nginx -p 8080:80 nginx:alpine
+          expect {
+            "Forwarding HTTP traffic from" {
+              # Extract the URL from the output
+              expect -re "https://(\[a-zA-Z0-9\]+\.serveo\.net)"
+              set url $expect_out(1,string)
+              puts "DOCKER_URL=https://$url"
           
-          # List running containers
-          docker ps
-          
-          # Get nginx container logs
-          docker logs test-nginx
-          
-          # Test container connectivity
-          Start-Sleep -Seconds 5
-          
-          # Stop and remove container
-          docker stop test-nginx
-          docker rm test-nginx
-
-      - name: Build and run custom application
-        run: |
-          # Create a simple Dockerfile for testing
-          @"
-          FROM node:18-alpine
-          WORKDIR /app
-          COPY package*.json ./
-          RUN npm install
-          COPY . .
-          EXPOSE 3000
-          CMD ["npm", "start"]
-          "@ | Out-File -FilePath Dockerfile -Encoding utf8
-          
-          # Create a simple package.json
-          @"
-          {
-            "name": "test-app",
-            "version": "1.0.0",
-            "description": "Test application",
-            "main": "index.js",
-            "scripts": {
-              "start": "node index.js"
-            },
-            "dependencies": {
-              "express": "^4.18.0"
+              # Keep the tunnel alive
+              expect eof
+            }
+            "Permission denied" {
+              puts "ERROR: Permission denied"
+              exit 1
+            }
+            timeout {
+              puts "ERROR: Timeout waiting for serveo"
+              exit 1
             }
           }
-          "@ | Out-File -FilePath package.json -Encoding utf8
+          EOF
           
-          # Create a simple Express app
-          @"
-          const express = require('express');
-          const app = express();
-          const port = 3000;
+          chmod +x serveo_tunnel.exp
           
-          app.get('/', (req, res) => {
-            res.json({ 
-              message: 'Hello from Docker on Windows via Linux sidecar!',
-              timestamp: new Date().toISOString(),
-              platform: process.platform,
-              architecture: process.arch
-            });
-          });
+          # Run the tunnel in background and capture output
+          timeout 300 ./serveo_tunnel.exp > serveo_output.log 2>&1 &
+          SERVEO_PID=$!
           
-          app.listen(port, '0.0.0.0', () => {
-            console.log(`App listening at http://0.0.0.0:${port}`);
-          });
-          "@ | Out-File -FilePath index.js -Encoding utf8
+          # Wait a bit for tunnel to establish
+          sleep 15
           
-          # Build the Docker image
-          docker build -t test-app:latest .
+          # Extract the URL from the log
+          if grep -q "DOCKER_URL=" serveo_output.log; then
+            DOCKER_URL=$(grep "DOCKER_URL=" serveo_output.log | cut -d'=' -f2)
+            echo "docker-url=$DOCKER_URL" >> $GITHUB_OUTPUT
+            echo "Docker daemon accessible at: $DOCKER_URL"
+          else
+            echo "Failed to establish serveo tunnel"
+            cat serveo_output.log
+            exit 1
+          fi
           
-          # Run the container
-          docker run -d --name test-app -p 3000:3000 test-app:latest
+          # Keep the process running for the duration of the workflow
+          echo $SERVEO_PID > serveo.pid
+
+      - name: Keep tunnel alive
+        run: |
+          # This step keeps running to maintain the tunnel
+          # The job will continue until the workflow completes
+          while kill -0 $(cat serveo.pid) 2>/dev/null; do
+            sleep 30
+            echo "Tunnel still active..."
+          done
+
+  windows-docker:
+    runs-on: windows-latest
+    needs: docker-sidecar
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker CLI
+        run: |
+          # Download Docker CLI for Windows
+          Invoke-WebRequest -Uri "https://download.docker.com/win/static/stable/x86_64/docker-24.0.7.zip" -OutFile "docker.zip"
+          Expand-Archive -Path "docker.zip" -DestinationPath "."
           
-          # Wait for app to start
-          Start-Sleep -Seconds 10
+          # Add Docker to PATH
+          $env:PATH += ";$PWD\docker"
+          
+          # Verify Docker CLI installation
+          .\docker\docker.exe version --format json
+
+      - name: Configure Docker to use remote daemon
+        run: |
+          $dockerUrl = "${{ needs.docker-sidecar.outputs.docker-url }}"
+          
+          if ([string]::IsNullOrEmpty($dockerUrl)) {
+            Write-Error "Docker URL not provided from sidecar job"
+            exit 1
+          }
+          
+          Write-Host "Configuring Docker to use remote daemon at: $dockerUrl"
+          
+          # Set Docker host environment variable
+          $env:DOCKER_HOST = $dockerUrl.Replace("https://", "tcp://").Replace("http://", "tcp://") + ":80"
+          
+          # For subsequent steps, we'll use the docker CLI with explicit host
+          echo "DOCKER_HOST=$env:DOCKER_HOST" >> $env:GITHUB_ENV
+          
+          Write-Host "Docker host configured: $env:DOCKER_HOST"
+
+      - name: Test Docker connection
+        run: |
+          # Test Docker connection
+          .\docker\docker.exe --host $env:DOCKER_HOST version
+          .\docker\docker.exe --host $env:DOCKER_HOST info
+
+      - name: Run Linux containers on Windows
+        run: |
+          Write-Host "Running Linux containers from Windows job..."
+          
+          # Pull and run a simple Linux container
+          .\docker\docker.exe --host $env:DOCKER_HOST pull alpine:latest
+          .\docker\docker.exe --host $env:DOCKER_HOST run --rm alpine:latest echo "Hello from Linux container running via Windows!"
+          
+          # Run a more complex example with nginx
+          .\docker\docker.exe --host $env:DOCKER_HOST pull nginx:alpine
+          $containerId = .\docker\docker.exe --host $env:DOCKER_HOST run -d -p 8080:80 nginx:alpine
+          
+          Write-Host "Started nginx container: $containerId"
+          
+          # Wait a moment for container to start
+          Start-Sleep -Seconds 5
           
           # Check if container is running
-          docker ps
-          docker logs test-app
+          .\docker\docker.exe --host $env:DOCKER_HOST ps
           
-          # Clean up
-          docker stop test-app
-          docker rm test-app
-          docker rmi test-app:latest
+          # Stop the container
+          .\docker\docker.exe --host $env:DOCKER_HOST stop $containerId
+          Write-Host "Stopped nginx container"
+
+      - name: Build custom Docker image
+        run: |
+          # Create a simple Dockerfile
+          @"
+          FROM ubuntu:20.04
+          RUN apt-get update && apt-get install -y curl
+          CMD ["echo", "Custom Linux image built from Windows!"]
+          "@ | Out-File -FilePath "Dockerfile" -Encoding utf8
+          
+          # Build the image
+          .\docker\docker.exe --host $env:DOCKER_HOST build -t custom-linux-app .
+          
+          # Run the custom image
+          .\docker\docker.exe --host $env:DOCKER_HOST run --rm custom-linux-app
 
       - name: Cleanup
         if: always()
         run: |
-          # Clean up any remaining containers and images
-          docker container prune -f
-          docker image prune -f
-          docker system prune -f
-
-  # Cleanup job to terminate sidecar
-  cleanup:
-    runs-on: ubuntu-latest
-    needs: [sidecar, windows-docker]
-    if: always()
-    steps:
-      - name: Cleanup artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-certs
-          path: /tmp/cleanup-certs
-
-      - name: Remove certificates
-        run: |
-          rm -rf /tmp/cleanup-certs
-          echo "Cleanup completed"
+          Write-Host "Cleaning up containers and images..."
+          
+          # Stop all running containers
+          $containers = .\docker\docker.exe --host $env:DOCKER_HOST ps -q
+          if ($containers) {
+            .\docker\docker.exe --host $env:DOCKER_HOST stop $containers
+          }
+          
+          # Remove stopped containers
+          .\docker\docker.exe --host $env:DOCKER_HOST container prune -f
+          
+          # Remove unused images
+          .\docker\docker.exe --host $env:DOCKER_HOST image prune -f
