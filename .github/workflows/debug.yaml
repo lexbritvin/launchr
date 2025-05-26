@@ -6,23 +6,56 @@
 # - Support for multiple OS platforms
 # - Port forwarding for debug sessions
 
-name: Debug with SSH
+name: 🚧 Debug with SSH
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       os:
-        description: 'OS to run'
-        type: string
-        required: true
-        default: ''
+        description: 'Debug with SSH in OS'
+        required: false
+        type: choice
+        options:
+          - 'Ubuntu LTS (amd64)'
+          - 'Ubuntu LTS (arm64)'
+          - 'macOS Latest (arm64)'
+          - 'macOS 13 (amd64)'
+          - 'Windows Latest (amd64)'
+          - 'Windows Latest (arm64)'
 
 jobs:
+  select-os:
+    name: 🗺 Select OS
+    runs-on: ubuntu-latest
+    outputs:
+      runner-os: >-
+        ${{
+          inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
+          inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
+          inputs.os == 'macOS Latest (arm64)' && 'macos-latest' ||
+          inputs.os == 'macOS 13 (amd64)' && 'macos-13' ||
+          inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
+          inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm' || ''
+        }}
+    steps:
+      - name: Echo selected OS
+        run: |
+          echo "Selected OS: ${{ inputs.os }}"
+          echo "Mapped to runner: ${{ needs.map-os.outputs.runner-os }}"
+  
   setup-tmate:
     name: 👉 How to connect 👈
-    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
-    outputs:
-      ssh-command: ${{ steps.tmate.outputs.ssh-command }}
-      ssh-address: ${{ steps.tmate.outputs.ssh-address }}
+    needs: select-os
+    runs-on: ${{ needs.select-os.outputs.runner-os || 'ubuntu-latest' }}
+    services:
+      # Docker daemon running in a Linux container
+      docker-daemon:
+        image: docker:dind
+        ports:
+          - 2376:2376
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+          DOCKER_HOST: tcp://0.0.0.0:2376
     steps:
       - uses: actions/checkout@v4
 
@@ -34,12 +67,35 @@ jobs:
         with:
           go-version: 'stable'
 
-      - name: Prepare dependencies
+      - name: Set up dependencies
         run: |
           go install github.com/go-delve/delve/cmd/dlv@latest
           go mod download
 
-      - name: 🛠 Setup tmate session 🛠
+      - name: Set up Docker Daemon on Windows
+        shell: powershell
+        if: runner.os == 'Windows'
+        run: |
+          Write-Host "🔗 Connecting Windows Docker CLI to Linux Docker daemon..."
+          
+          # Set Docker host to the service
+          $env:DOCKER_HOST = "tcp://localhost:2376"
+          
+          # Test connection
+          docker version
+          $osType = docker info --format "{{.OSType}}"
+          Write-Host "Docker daemon OS type: $osType"
+        
+          # Fail if OS type is not Linux
+          if ($osType -ne "linux") {
+            Write-Error "❌ Error: Docker daemon is not running Linux. Found OS type: $osType"
+            exit 1
+          }
+  
+          echo "VARIABLE_NAME=value" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "✅ Windows connected to Linux Docker daemon!"
+
+      - name: 🛠 Set up tmate session 🛠
         id: tmate
         uses: mxschmitt/action-tmate@v3
         with:
@@ -48,15 +104,19 @@ jobs:
 
       - name: 👉 How to connect 👈
         shell: bash
+        # TODO: Add that on windows we run on a remote docker to use Linux containers and local mappings are not really supported.
+        # TODO: Add that on windows by default we login with bash. For better support use PowerShell. After login, run `powershell`
         run: |
           echo -e "\e[1;36m📝 Debug Session Information\e[0m"
+          echo ""
           echo -e "\e[1;31m⚠️ IMPORTANT ⚠️\e[0m"
           echo "    - SSH access is limited to the GitHub user who started this debug session"
           echo "    - Your GitHub account's SSH keys will be used for authentication"
           echo "    - Session will automatically end after disconnect"
           echo "    - Maximum session time is 30 minutes"
           echo "    - All changes are temporary and will be lost after session ends"
-          echo -e "\e[1;36m========================================================\e[0m"
+          echo ""
+          echo -e "\e[1;36m===============================================================\e[0m"
           echo ""
           echo -e "\e[1;32m🔗 1. Connect with SSH:\e[0m"
           echo -e "      \e[1m${{ steps.tmate.outputs.ssh-command }}\e[0m"
@@ -81,8 +141,8 @@ jobs:
           echo "        dlv debug --headless --listen=:2345 --api-version=2 ./cmd/launchr -- [args...]"
           echo ""
           echo -e "\e[1;34mConnect to Delve from local machine to port 2345.\e[0m"
-          echo "  - VS Code: https://github.com/golang/vscode-go/blob/master/docs/debugging.md"
-          echo "  - GoLand: https://www.jetbrains.com/help/go/attach-to-running-go-processes-with-debugger.html#attach-to-a-process-on-a-remote-machine"
+          echo "  -       VS Code: https://github.com/golang/vscode-go/blob/master/docs/debugging.md"
+          echo "  - JetBrains IDE: https://www.jetbrains.com/help/go/attach-to-running-go-processes-with-debugger.html#attach-to-a-process-on-a-remote-machine"
           echo ""
           echo -e "\e[1;36m📚 Delve Documentation:\e[0m"
           echo "   https://github.com/go-delve/delve/tree/master/Documentation"

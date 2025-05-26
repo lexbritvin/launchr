@@ -28,18 +28,3 @@ jobs:
     name: 🛡 Test
     uses: ./.github/workflows/common-tests.yaml
     if: inputs.os == ''
-
-  debug:
-    name: 🚧 Debug
-    uses: ./.github/workflows/debug.yaml
-    if: inputs.os != ''
-    with:
-      os: >-
-        ${{
-          inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
-          inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
-          inputs.os == 'macOS Latest (arm64)' && 'macos-latest' ||
-          inputs.os == 'macOS 13 (amd64)' && 'macos-13' ||
-          inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
-          inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm'
-        }}
