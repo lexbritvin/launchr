@@ -1,0 +1,281 @@
+# GitHub Action workflow with Windows Docker and Linux sidecar via Serveo
+name: Docker Windows with Linux Sidecar via Serveo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sidecar:
+    runs-on: ubuntu-latest
+    outputs:
+      tunnel-url: ${{ steps.tunnel.outputs.url }}
+      docker-host: ${{ steps.tunnel.outputs.docker-host }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Docker TLS certificates
+        id: certs
+        run: |
+          # Create directory for certificates
+          mkdir -p ~/.docker
+          
+          # Let Docker generate certificates automatically with proper setup
+          # Generate a simple CA for our use case
+          openssl genrsa -out ~/.docker/ca-key.pem 4096
+          openssl req -new -x509 -days 365 -key ~/.docker/ca-key.pem -sha256 -out ~/.docker/ca.pem -subj "/CN=dockerca"
+          
+          # Generate server key and cert
+          openssl genrsa -out ~/.docker/server-key.pem 4096
+          openssl req -subj "/CN=localhost" -sha256 -new -key ~/.docker/server-key.pem -out ~/.docker/server.csr
+          openssl x509 -req -days 365 -in ~/.docker/server.csr -CA ~/.docker/ca.pem -CAkey ~/.docker/ca-key.pem -out ~/.docker/server-cert.pem -CAcreateserial
+          
+          # Generate client key and cert  
+          openssl genrsa -out ~/.docker/key.pem 4096
+          openssl req -subj "/CN=client" -new -key ~/.docker/key.pem -out ~/.docker/client.csr
+          openssl x509 -req -days 365 -in ~/.docker/client.csr -CA ~/.docker/ca.pem -CAkey ~/.docker/ca-key.pem -out ~/.docker/cert.pem -CAcreateserial
+          
+          # Set permissions
+          chmod 400 ~/.docker/ca-key.pem ~/.docker/key.pem ~/.docker/server-key.pem
+          chmod 444 ~/.docker/ca.pem ~/.docker/server-cert.pem ~/.docker/cert.pem
+          
+          # Clean up CSR files
+          rm ~/.docker/client.csr ~/.docker/server.csr
+
+      - name: Start Docker daemon with TLS
+        run: |
+          # Stop default Docker daemon
+          sudo systemctl stop docker
+          
+          # Start Docker daemon with TLS enabled
+          sudo dockerd \
+            --host=0.0.0.0:2376 \
+            --tlsverify \
+            --tlscacert=$HOME/.docker/ca.pem \
+            --tlscert=$HOME/.docker/server-cert.pem \
+            --tlskey=$HOME/.docker/server-key.pem &
+          
+          # Wait for Docker daemon to start
+          sleep 10
+          
+          # Verify Docker daemon is running with TLS
+          docker --tlsverify \
+            --tlscacert=$HOME/.docker/ca.pem \
+            --tlscert=$HOME/.docker/cert.pem \
+            --tlskey=$HOME/.docker/key.pem \
+            -H=localhost:2376 version
+
+      - name: Setup Serveo tunnel
+        id: tunnel
+        run: |
+          # Start SSH tunnel to Serveo for port 2376 (Docker daemon)
+          # Serveo will assign a random subdomain
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o ServerAliveInterval=60 \
+              -R 2376:localhost:2376 \
+              serveo.net > serveo_output.log 2>&1 &
+          
+          # Wait for tunnel to establish and capture the URL
+          sleep 10
+          
+          # Extract the tunnel URL from Serveo output
+          # Serveo typically outputs: "Forwarding HTTP traffic from https://randomstring.serveo.net"
+          TUNNEL_URL=""
+          for i in {1..30}; do
+            if grep -q "serveo.net" serveo_output.log; then
+              TUNNEL_URL=$(grep -o 'https://[^[:space:]]*\.serveo\.net' serveo_output.log | head -1)
+              break
+            fi
+            echo "Waiting for Serveo tunnel... ($i/30)"
+            sleep 2
+          done
+          
+          if [ -z "$TUNNEL_URL" ]; then
+            echo "Failed to get Serveo tunnel URL, trying alternative method..."
+            # Alternative: use a custom subdomain (may not always work)
+            CUSTOM_SUBDOMAIN="docker-$(openssl rand -hex 4)"
+            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                -o ServerAliveInterval=60 \
+                -R $CUSTOM_SUBDOMAIN:2376:localhost:2376 \
+                serveo.net > serveo_output2.log 2>&1 &
+            sleep 5
+            TUNNEL_URL="https://$CUSTOM_SUBDOMAIN.serveo.net"
+          fi
+          
+          # Set outputs
+          echo "url=$TUNNEL_URL" >> $GITHUB_OUTPUT
+          echo "docker-host=${TUNNEL_URL#https://}:2376" >> $GITHUB_OUTPUT
+          
+          echo "Serveo tunnel established at: $TUNNEL_URL"
+          echo "Docker daemon accessible at: ${TUNNEL_URL#https://}:2376"
+          
+          # Show tunnel status
+          cat serveo_output.log
+
+      - name: Upload Docker certificates
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-certs
+          path: |
+            ~/.docker/ca.pem
+            ~/.docker/cert.pem
+            ~/.docker/key.pem
+          retention-days: 1
+
+      - name: Keep sidecar running
+        run: |
+          echo "Sidecar is running and forwarding Docker daemon via Serveo"
+          echo "Docker daemon accessible at: ${{ steps.tunnel.outputs.docker-host }}"
+          
+          # Keep monitoring the tunnel and restart if needed
+          while true; do
+            echo "Sidecar heartbeat: $(date)"
+          
+            # Check if SSH tunnel is still active
+            if ! pgrep -f "serveo.net" > /dev/null; then
+              echo "Serveo tunnel died, restarting..."
+              ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                  -o ServerAliveInterval=60 \
+                  -R 2376:localhost:2376 \
+                  serveo.net &
+            fi
+          
+            sleep 30
+          done
+
+  windows-docker:
+    runs-on: windows-latest
+    needs: sidecar
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Docker certificates
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-certs
+          path: ./docker-certs
+
+      - name: Setup Docker certificates on Windows
+        shell: powershell
+        run: |
+          # Create Docker certs directory
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker"
+          
+          # Copy certificates
+          Copy-Item -Path ".\docker-certs\*" -Destination "$env:USERPROFILE\.docker\" -Force
+          
+          # List certificates
+          Get-ChildItem "$env:USERPROFILE\.docker\"
+
+      - name: Configure Docker client for remote TLS connection
+        shell: powershell
+        run: |
+          # Set Docker environment variables for TLS connection
+          $env:DOCKER_HOST = "${{ needs.sidecar.outputs.docker-host }}"
+          $env:DOCKER_TLS_VERIFY = "1"
+          $env:DOCKER_CERT_PATH = "$env:USERPROFILE\.docker"
+          
+          # Export environment variables for subsequent steps
+          echo "DOCKER_HOST=${{ needs.sidecar.outputs.docker-host }}" >> $env:GITHUB_ENV
+          echo "DOCKER_TLS_VERIFY=1" >> $env:GITHUB_ENV
+          echo "DOCKER_CERT_PATH=$env:USERPROFILE\.docker" >> $env:GITHUB_ENV
+          
+          Write-Host "Docker configured to connect to: ${{ needs.sidecar.outputs.docker-host }}"
+
+      - name: Test Docker connection
+        shell: powershell
+        run: |
+          # Test Docker connection with TLS
+          Write-Host "Testing Docker connection..."
+          docker version
+          docker info
+
+      - name: Run Linux container on Windows
+        shell: powershell
+        run: |
+          # Pull and run a Linux container
+          Write-Host "Pulling Ubuntu image..."
+          docker pull ubuntu:latest
+          
+          Write-Host "Running Linux container..."
+          docker run --rm ubuntu:latest echo "Hello from Linux container running on Windows via secure tunnel!"
+          
+          Write-Host "Running interactive container test..."
+          docker run --rm ubuntu:latest /bin/bash -c "
+            echo 'Container OS info:'
+            cat /etc/os-release
+            echo 'Container architecture:'
+            uname -m
+            echo 'Current date in container:'
+            date
+          "
+
+      - name: Run custom application container
+        shell: powershell
+        run: |
+          # Example: Run a web application container
+          Write-Host "Starting web application container..."
+          docker run -d --name test-web -p 8080:80 nginx:alpine
+          
+          # Wait for container to start
+          Start-Sleep -Seconds 10
+          
+          # Check container status
+          docker ps
+          docker logs test-web
+          
+          # Cleanup
+          docker stop test-web
+          docker rm test-web
+
+      - name: Build custom Docker image
+        shell: powershell
+        run: |
+          # Create a simple Dockerfile
+          @"
+          FROM alpine:latest
+          RUN apk add --no-cache curl
+          WORKDIR /app
+          COPY . .
+          CMD ["echo", "Custom image built on Windows, running on Linux!"]
+          "@ | Out-File -FilePath Dockerfile -Encoding ASCII
+          
+          # Build the image
+          Write-Host "Building custom Docker image..."
+          docker build -t custom-app:latest .
+          
+          # Run the custom image
+          Write-Host "Running custom Docker image..."
+          docker run --rm custom-app:latest
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [sidecar, windows-docker]
+    if: always()
+    steps:
+      - name: Cleanup artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Clean up the certificates artifact
+            try {
+              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.runId,
+              });
+            
+              for (const artifact of artifacts.data.artifacts) {
+                if (artifact.name === 'docker-certs') {
+                  await github.rest.actions.deleteArtifact({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    artifact_id: artifact.id,
+                  });
+                  console.log('Cleaned up docker-certs artifact');
+                }
+              }
+            } catch (error) {
+              console.log('Error cleaning up artifacts:', error.message);
+            }
