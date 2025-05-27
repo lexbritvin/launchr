@@ -1,6 +1,6 @@
-import * as core from "@actions/core";
-import * as exec from "@actions/exec";
-import * as fs from "fs";
+const core = require("@actions/core");
+const exec = require("@actions/exec");
+const fs = require("fs");
 
 async function cleanup() {
   try {

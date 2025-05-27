@@ -1,8 +1,8 @@
-import * as core from "@actions/core";
-import * as exec from "@actions/exec";
-import * as path from "path";
-import * as fs from "fs";
-import * as crypto from "crypto";
+const core = require("@actions/core");
+const exec = require("@actions/exec");
+const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
 
 async function run() {
   try {
