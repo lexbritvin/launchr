@@ -74,9 +74,6 @@ jobs:
       - name: Install SSH and setup serveo tunnel
         id: setup_tunnel
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client
-          
           # Start serveo tunnel with port 0 (random port assignment)
           ssh -o StrictHostKeyChecking=no -R 0:localhost:2376 serveo.net > serveo_output.txt 2>&1 &
           sleep 5

@@ -1,0 +1,40 @@
+name: Docker Workflow Example
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  docker-job:
+    name: Docker Job
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up the Docker sidecar environment (cleanup happens automatically)
+      - name: Set up Docker sidecar
+        id: docker-setup
+        uses: ./.github/actions/docker-sidecar
+        with:
+          timeout: '1800'  # 30 minutes
+
+      # Your steps can now use Docker via the sidecar
+      - name: Run Docker container - Alpine
+        run: |
+          docker run --rm alpine:latest sh -c "echo 'Hello from Alpine container'; uname -a"
+
+      - name: Run Docker container - Node.js
+        run: |
+          docker run --rm node:18-alpine node -e "console.log('Node.js version:', process.version)"
+
+      - name: Run Docker container with volume mount
+        run: |
+          # Create a test file in the workspace
+          echo "Hello from the host" > test-file.txt
+          
+          # Mount the workspace and access the file from the container
+          docker run --rm -v "$(pwd):/workspace" alpine:latest sh -c "cat /workspace/test-file.txt && echo 'Hello from the container' >> /workspace/test-file.txt"
+          
+          # Verify the file was modified
+          cat test-file.txt
