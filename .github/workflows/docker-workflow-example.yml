@@ -18,6 +18,8 @@ jobs:
         uses: lexbritvin/docker-sidecar-action@main
         with:
           timeout: '1800'  # 30 minutes
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       # Your steps can now use Docker via the sidecar
       - name: Run Docker container - Alpine
