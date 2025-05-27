@@ -1,15 +1,12 @@
 name: Windows with Linux Sidecar
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   linux-sidecar:
     runs-on: ubuntu-latest
-    outputs:
-      serveo_hostname: ${{ steps.setup_tunnel.outputs.serveo_hostname }}
-      serveo_port: ${{ steps.setup_tunnel.outputs.serveo_port }}
-      ready: ${{ steps.setup_tunnel.outputs.ready }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -95,12 +92,11 @@ jobs:
             exit 1
           fi
           
-          # Set outputs for job
-          echo "serveo_hostname=$SERVEO_HOSTNAME" >> $GITHUB_OUTPUT
-          echo "serveo_port=$SERVEO_PORT" >> $GITHUB_OUTPUT
-          echo "ready=true" >> $GITHUB_OUTPUT
-          
           echo "Docker daemon available at: $SERVEO_HOSTNAME:$SERVEO_PORT"
+          
+          # Create a connection details file to share with Windows job
+          echo "SERVEO_HOSTNAME=$SERVEO_HOSTNAME" > connection_details.txt
+          echo "SERVEO_PORT=$SERVEO_PORT" >> connection_details.txt
 
       - name: Validate Docker daemon is accessible
         run: |
@@ -109,6 +105,13 @@ jobs:
           DOCKER_CERT_PATH=~/.docker/certs docker info
 
       - name: Share connection details with Windows job
+        uses: actions/upload-artifact@v4
+        with:
+          name: connection-details
+          path: connection_details.txt
+          retention-days: 1
+
+      - name: Share Docker TLS certificates with Windows job
         uses: actions/upload-artifact@v4
         with:
           name: docker-certs
@@ -269,19 +272,26 @@ jobs:
           name: docker-certs
           path: docker-certs
 
+      - name: Download connection details
+        uses: actions/download-artifact@v4
+        with:
+          name: connection-details
+          path: connection-details
+
       - name: Setup Docker TLS certs
         run: |
           # Create Docker certs directory
           New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker"
           Copy-Item -Path "docker-certs\*" -Destination "$env:USERPROFILE\.docker" -Force
           
-          # Use job outputs from linux-sidecar
-          $serveoHostname = "${{ jobs.linux-sidecar.outputs.serveo_hostname }}"
-          $serveoPort = "${{ jobs.linux-sidecar.outputs.serveo_port }}"
+          # Read connection details from file
+          $connectionDetails = Get-Content -Path "connection-details\connection_details.txt"
+          $serveoHostname = ($connectionDetails | Select-String -Pattern "SERVEO_HOSTNAME=(.+)" | ForEach-Object { $_.Matches.Groups[1].Value })
+          $serveoPort = ($connectionDetails | Select-String -Pattern "SERVEO_PORT=(\d+)" | ForEach-Object { $_.Matches.Groups[1].Value })
           
           # Verify we have the connection details
           if (-not $serveoHostname -or -not $serveoPort) {
-            Write-Host "Failed to get connection details from linux-sidecar job outputs"
+            Write-Host "Failed to get connection details from connection_details.txt"
             exit 1
           }
           
