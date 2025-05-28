@@ -37,7 +37,7 @@ jobs:
           echo "Hello from the host" > test-file.txt
           
           # Mount the workspace and access the file from the container
-          docker run --rm -v "./:/workspace" alpine:latest sh -c "cat /workspace/test-file.txt && echo 'Hello from the container' >> /workspace/test-file.txt"
+          docker run --rm -v ".:/workspace" alpine:latest sh -c "cat /workspace/test-file.txt && echo 'Hello from the container' >> /workspace/test-file.txt"
           
           # Verify the file was modified
           cat test-file.txt
