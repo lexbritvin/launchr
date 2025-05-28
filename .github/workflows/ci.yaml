@@ -10,21 +10,8 @@ on:
 #      - 'example/**'
 #      - 'docs/**'
   workflow_dispatch:
-    inputs:
-      os:
-        description: 'Debug with SSH in OS'
-        required: false
-        type: choice
-        options:
-          - 'Ubuntu LTS (amd64)'
-          - 'Ubuntu LTS (arm64)'
-          - 'macOS Latest (arm64)'
-          - 'macOS 13 (amd64)'
-          - 'Windows Latest (amd64)'
-          - 'Windows Latest (arm64)'
 
 jobs:
   common-tests:
     name: 🛡 Test
     uses: ./.github/workflows/common-tests.yaml
-    if: inputs.os == ''
