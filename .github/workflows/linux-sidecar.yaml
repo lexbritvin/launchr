@@ -20,5 +20,4 @@ jobs:
     with:
       sidecar-id: ${{ inputs.sidecar-id }}
       timeout: ${{ inputs.timeout }}
-    secrets:
-      GH_TOKEN: ${{ github.token }}
+    secrets: inherit
