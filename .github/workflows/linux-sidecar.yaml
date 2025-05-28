@@ -17,7 +17,7 @@ on:
 jobs:
   run-sidecar:
     name: Run Linux Docker Sidecar
-    uses: lexbritvin/docker-sidecar-action/.github/workflow/linux-sidecar.yaml@main
+    uses: lexbritvin/docker-sidecar-action/.github/workflows/linux-sidecar.yaml@main
     with:
       sidecar-id: ${{ inputs.sidecar-id }}
       timeout: ${{ inputs.timeout }}
