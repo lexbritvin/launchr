@@ -23,4 +23,4 @@ jobs:
       sidecar-id: ${{ inputs.sidecar-id }}
       timeout: ${{ inputs.timeout }}
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
