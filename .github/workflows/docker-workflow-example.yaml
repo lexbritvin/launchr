@@ -24,6 +24,8 @@ jobs:
       - name: Set up Docker sidecar
         id: docker-setup
         uses: lexbritvin/docker-sidecar-action@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Your steps can now use Docker via the sidecar
       - name: Run Docker container - Alpine
