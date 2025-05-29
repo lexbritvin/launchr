@@ -5,8 +5,16 @@ on:
     branches: [ main ]
 
 jobs:
-  docker-job:
-    name: Docker Job
+  linux-sidecar:
+    name: Run Linux Docker Sidecar
+    uses: lexbritvin/docker-sidecar-action/.github/workflows/linux-sidecar.yaml@main
+    permissions:
+      contents: read
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  windows-job:
+    name: Windows Job
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -17,7 +25,6 @@ jobs:
         id: docker-setup
         uses: lexbritvin/docker-sidecar-action@main
         with:
-          workflow: 'linux-sidecar.yaml'
           timeout: '1800'  # 30 minutes
         env:
           GH_TOKEN: ${{ github.token }}
