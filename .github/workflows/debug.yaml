@@ -62,29 +62,6 @@ jobs:
           go install github.com/go-delve/delve/cmd/dlv@latest
           go mod download
 
-      - name: Set up Docker Daemon on Windows
-        shell: powershell
-        if: runner.os == 'Windows'
-        run: |
-          Write-Host "🔗 Connecting Windows Docker CLI to Linux Docker daemon..."
-          
-          # Set Docker host to the service
-          $env:DOCKER_HOST = "tcp://localhost:2376"
-          
-          # Test connection
-          docker version
-          $osType = docker info --format "{{.OSType}}"
-          Write-Host "Docker daemon OS type: $osType"
-        
-          # Fail if OS type is not Linux
-          if ($osType -ne "linux") {
-            Write-Error "❌ Error: Docker daemon is not running Linux. Found OS type: $osType"
-            exit 1
-          }
-  
-          echo "VARIABLE_NAME=value" | Out-File -FilePath $env:GITHUB_ENV -Append
-          Write-Host "✅ Windows connected to Linux Docker daemon!"
-
       - name: 🛠 Set up tmate session 🛠
         id: tmate
         uses: mxschmitt/action-tmate@v3

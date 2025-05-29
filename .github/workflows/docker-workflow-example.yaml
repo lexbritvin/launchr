@@ -6,7 +6,7 @@ on:
 
 jobs:
   linux-sidecar:
-    name: Run Linux Docker Sidecar
+    name: Linux Docker Sidecar
     uses: lexbritvin/docker-sidecar-action/.github/workflows/linux-sidecar.yaml@main
     permissions:
       contents: read
