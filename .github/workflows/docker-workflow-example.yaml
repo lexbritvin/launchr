@@ -24,8 +24,6 @@ jobs:
       - name: Set up Docker sidecar
         id: docker-setup
         uses: lexbritvin/docker-sidecar-action@main
-        with:
-          timeout: '1800'  # 30 minutes
         env:
           GH_TOKEN: ${{ github.token }}
 
