@@ -16,10 +16,11 @@ jobs:
         id: generate-key
         run: |
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
-          # while IFS= read -r line; do
-          #   echo "::add-mask::$line"
-          # done < ./id_ed25519
-          # The key must be automatically hidden by github.
+          # Mask the key.
+          while IFS= read -r line; do
+            echo "::add-mask::$line"
+          done < ./id_ed25519
+          # Export ssh key.
           {
             echo "private_key<<EOF"
             cat ./id_ed25519
