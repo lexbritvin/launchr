@@ -4,6 +4,11 @@ on:
   push:
     branches: [ main ]
 
+env:
+  SSH_JUMP_SERVER: serveo.net
+  SSH_JUMP_HOST_KEY: |
+    serveo.net ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxYGqSKVwJpQD1F0YIhz+bd5lpl7YesKjtrn1QD1RjQcSj724lJdCwlv4J8PcLuFFtlAA8AbGQju7qWdMN9ihdHvRcWf0tSjZ+bzwYkxaCydq4JnCrbvLJPwLFaqV1NdcOzY2NVLuX5CfY8VTHrps49LnO0QpGaavqrbk+wTWDD9MHklNfJ1zSFpQAkSQnSNSYi/M2J3hX7P0G2R7dsUvNov+UgNKpc4n9+Lq5Vmcqjqo2KhFyHP0NseDLpgjaqGJq2Kvit3QowhqZkK4K77AA65CxZjdDfpjwZSuX075F9vNi0IFpFkGJW9KlrXzI4lIzSAjPZBURhUb8nZSiPuzj
+
 jobs:
   client-ssh-key:
     name: Generate SSH Key
@@ -16,16 +21,19 @@ jobs:
         id: generate-key
         run: |
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
-          # Mask the key.
-          #while IFS= read -r line; do
-          #  echo "::add-mask::$line"
-          #done < ./id_ed25519
+
           # Export ssh key.
           {
             echo "private_key<<EOF"
             cat ./id_ed25519
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+          # Mask the key.
+          while IFS= read -r line; do
+            echo "::add-mask::$line"
+          done < ./id_ed25519
+
           echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
   
   linux-sidecar:
@@ -82,12 +90,12 @@ jobs:
           host: ${{ env.SSH_JUMP_HOST }}
           port: 2222
           username: "runner"
-          jump_hosts: ${{ env.SSH_JUMP_HOST }}@serveo.net
+          jump_hosts: ${{ env.SSH_JUMP_HOST }}@${{ env.SSH_JUMP_SERVER }}
           private_key_path: ${{ steps.export-key.outputs.key_path }}
           local_forwards: "2376:localhost:2376"
           ssh_flags: -o StrictHostKeyChecking=no -o PreferredAuthentications=publickey
           known_hosts: |
-            serveo.net ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxYGqSKVwJpQD1F0YIhz+bd5lpl7YesKjtrn1QD1RjQcSj724lJdCwlv4J8PcLuFFtlAA8AbGQju7qWdMN9ihdHvRcWf0tSjZ+bzwYkxaCydq4JnCrbvLJPwLFaqV1NdcOzY2NVLuX5CfY8VTHrps49LnO0QpGaavqrbk+wTWDD9MHklNfJ1zSFpQAkSQnSNSYi/M2J3hX7P0G2R7dsUvNov+UgNKpc4n9+Lq5Vmcqjqo2KhFyHP0NseDLpgjaqGJq2Kvit3QowhqZkK4K77AA65CxZjdDfpjwZSuX075F9vNi0IFpFkGJW9KlrXzI4lIzSAjPZBURhUb8nZSiPuzj
+            ${{ env.SSH_JUMP_HOST_KEY }}
 
       - name: Run Docker container - Alpine
         run: |
