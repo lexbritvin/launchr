@@ -5,7 +5,7 @@ on:
     branches: [ main ]
 
 env:
-  SSH_JUMP_USER: gh-${{ env.GITHUB_JOB }}-${{ env.GITHUB_RUN_ID }}-sidecar
+  SSH_JUMP_HOST: gh-${{ env.GITHUB_JOB }}-${{ env.GITHUB_RUN_ID }}-sidecar
 
 jobs:
   client-ssh-key:
@@ -45,15 +45,16 @@ jobs:
       - name: Forward Docker port
         uses: lexbritvin/ssh-port-forward-action@main
         with:
-          host: ${{ env.SSH_JUMP_USER }}
+          host: ${{ env.SSH_JUMP_HOST }}
           port: 2222
           username: "runner"
-          jump_hosts: ${{ env.SSH_JUMP_USER }}@serveo.net
+          jump_hosts: ${{ env.SSH_JUMP_HOST }}@serveo.net
           private_key: ${{ needs.client-ssh-key.outputs.private-key }}
           local_forwards: "2376:localhost:2376"
+          ssh_flags: -o StrictHostKeyChecking=no -o PreferredAuthentications=publickey
           known_hosts: |
             serveo.net ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxYGqSKVwJpQD1F0YIhz+bd5lpl7YesKjtrn1QD1RjQcSj724lJdCwlv4J8PcLuFFtlAA8AbGQju7qWdMN9ihdHvRcWf0tSjZ+bzwYkxaCydq4JnCrbvLJPwLFaqV1NdcOzY2NVLuX5CfY8VTHrps49LnO0QpGaavqrbk+wTWDD9MHklNfJ1zSFpQAkSQnSNSYi/M2J3hX7P0G2R7dsUvNov+UgNKpc4n9+Lq5Vmcqjqo2KhFyHP0NseDLpgjaqGJq2Kvit3QowhqZkK4K77AA65CxZjdDfpjwZSuX075F9vNi0IFpFkGJW9KlrXzI4lIzSAjPZBURhUb8nZSiPuzj
-          ssh_flags: -o StrictHostKeyChecking=no -o PreferredAuthentications=publickey
+          
 
       # Set up the Docker sidecar environment
       - name: Set up Remote Docker
