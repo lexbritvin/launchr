@@ -5,7 +5,8 @@ on:
     branches: [ main ]
 
 env:
-  SSH_JUMP_HOST: gh-${{ env.GITHUB_JOB }}-${{ env.GITHUB_RUN_ID }}-sidecar
+  DOCKER_SIDECAR_JOB: linux-sidecar
+  SSH_JUMP_HOST: gh-${{ env.DOCKER_SIDECAR_JOB }}-${{ env.GITHUB_RUN_ID }}-sidecar
 
 jobs:
   client-ssh-key:
