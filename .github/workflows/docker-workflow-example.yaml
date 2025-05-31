@@ -9,7 +9,7 @@ jobs:
     name: Generate SSH Key
     runs-on: ubuntu-latest
     outputs:
-      private-key-base64: ${{ steps.generate-key.outputs.private_key }}
+      private-key: ${{ steps.generate-key.outputs.private_key }}
       public-key: ${{ steps.generate-key.outputs.public_key }}
     steps:
       - name: Generate ED25519 SSH key pair
