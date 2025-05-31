@@ -67,7 +67,7 @@ jobs:
           port: 2222
           username: "runner"
           jump_hosts: ${{ env.SSH_JUMP_HOST }}@serveo.net
-          private_key_path: ${{ steps.export-key.key_path }}
+          private_key_path: ${{ steps.export-key.outputs.key_path }}
           local_forwards: "2376:localhost:2376"
           ssh_flags: -o StrictHostKeyChecking=no -o PreferredAuthentications=publickey
           known_hosts: |
