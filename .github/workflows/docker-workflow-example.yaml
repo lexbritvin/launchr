@@ -19,7 +19,7 @@ jobs:
           # while IFS= read -r line; do
           #   echo "::add-mask::$line"
           # done < ./id_ed25519
-          // The key must be automatically hidden by github.
+          # The key must be automatically hidden by github.
           {
             echo "private_key<<EOF"
             cat ./id_ed25519
