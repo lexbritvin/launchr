@@ -36,8 +36,7 @@ jobs:
     needs: [client-ssh-key]
     runs-on: windows-latest
     env:
-      DOCKER_SIDECAR_JOB: linux-sidecar
-      SSH_JUMP_HOST: gh-linux-sidecar-${{ env.GITHUB_RUN_ID }}-sidecar
+      SSH_JUMP_HOST: gh-linux-sidecar-${{ github.run_id }}-sidecar
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
