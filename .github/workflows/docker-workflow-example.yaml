@@ -17,9 +17,9 @@ jobs:
         run: |
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
           # Mask the key.
-          while IFS= read -r line; do
-            echo "::add-mask::$line"
-          done < ./id_ed25519
+          #while IFS= read -r line; do
+          #  echo "::add-mask::$line"
+          #done < ./id_ed25519
           # Export ssh key.
           {
             echo "private_key<<EOF"
