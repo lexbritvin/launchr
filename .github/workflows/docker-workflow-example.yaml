@@ -56,9 +56,12 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
-          stat --format="%s" ~/.ssh/id_ed25519_tmp
+          du -h ~/.ssh/id_ed25519_tmp
           chmod 600 ~/.ssh/id_ed25519_tmp
           echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
+      - name: test
+        run: |
+          echo "${{ steps.export-key.outputs.key_path }}"
 
       - name: Forward Docker port
         uses: lexbritvin/ssh-port-forward-action@main
