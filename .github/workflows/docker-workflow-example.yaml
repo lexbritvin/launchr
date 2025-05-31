@@ -36,7 +36,7 @@ jobs:
       - name: Run Linux Docker sidecar
         uses: lexbritvin/docker-sidecar-action/run-sidecar@main
         with:
-          wait-for-job: windows-job
+          wait-for-job: "Windows Job"
           authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
   
   windows-job:
