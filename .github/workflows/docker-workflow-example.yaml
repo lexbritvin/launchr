@@ -9,15 +9,21 @@ jobs:
     name: Generate SSH Key
     runs-on: ubuntu-latest
     outputs:
-      private-key: ${{ steps.generate-key.outputs.private_key }}
+      private-key-base64: ${{ steps.generate-key.outputs.private_key }}
       public-key: ${{ steps.generate-key.outputs.public_key }}
     steps:
       - name: Generate ED25519 SSH key pair
         id: generate-key
         run: |
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
-          echo "::add-mask::$(cat ./id_ed25519)"
-          echo "private_key=$(cat ./id_ed25519)" >> $GITHUB_OUTPUT
+          while IFS= read -r line; do
+            echo "::add-mask::$line"
+          done < ./id_ed25519
+          {
+            echo "private_key<<EOF"
+            cat ./id_ed25519
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
   
   linux-sidecar:
