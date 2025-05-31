@@ -22,17 +22,17 @@ jobs:
         run: |
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
 
-          # Export ssh key.
+          echo "Export private ssh key"
           {
             echo "private_key<<EOF"
             cat ./id_ed25519
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-          # Mask the key.
-          while IFS= read -r line; do
-            echo "::add-mask::$line"
-          done < ./id_ed25519
+          #echo "Masking the private key"
+          #while IFS= read -r line; do
+          #  echo "::add-mask::$line"
+          #done < ./id_ed25519
 
           echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
   
@@ -45,6 +45,8 @@ jobs:
         uses: lexbritvin/docker-sidecar-action/run-sidecar@main
         with:
           wait-for-job: "Windows Job"
+          jump-host: ${{ env.SSH_JUMP_SERVER }}
+          jump-host-key: ${{ env.SSH_JUMP_HOST_KEY }}
           authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
   
   windows-job:
