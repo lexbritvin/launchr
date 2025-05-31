@@ -4,10 +4,6 @@ on:
   push:
     branches: [ main ]
 
-env:
-  DOCKER_SIDECAR_JOB: linux-sidecar
-  SSH_JUMP_HOST: gh-${{ env.DOCKER_SIDECAR_JOB }}-${{ env.GITHUB_RUN_ID }}-sidecar
-
 jobs:
   client-ssh-key:
     name: Generate SSH Key
@@ -39,6 +35,9 @@ jobs:
     name: Windows Job
     needs: [client-ssh-key]
     runs-on: windows-latest
+    env:
+      DOCKER_SIDECAR_JOB: linux-sidecar
+      SSH_JUMP_HOST: gh-linux-sidecar-${{ env.GITHUB_RUN_ID }}-sidecar
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
