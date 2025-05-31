@@ -17,9 +17,9 @@ jobs:
         run: |
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
           # Mask the key.
-          while IFS= read -r line; do
-            echo "::add-mask::$line"
-          done < ./id_ed25519
+          #while IFS= read -r line; do
+          #  echo "::add-mask::$line"
+          #done < ./id_ed25519
           # Export ssh key.
           {
             echo "private_key<<EOF"
@@ -51,15 +51,17 @@ jobs:
         
       - name: Export SSH key to file
         id: export-key
+        shell: bash
         env:
           PRIVATE_KEY: ${{ needs.client-ssh-key.outputs.private-key }}
         run: |
           mkdir -p ~/.ssh
           echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
           chmod 600 ~/.ssh/id_ed25519_tmp
-          echo "key_path=~/.ssh/id_ed25519_tmp" >> "$GITHUB_OUTPUT"
+          echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
 
       - name: test
+        shell: bash
         run: |
           echo "${{ steps.export-key.outputs.key_path }}"
       - name: test
