@@ -48,6 +48,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        
+      - name: Export SSH key to file
+        id: export-key
+        env:
+          PRIVATE_KEY: ${{ needs.client-ssh-key.outputs.private-key }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
+          stat --format="%s" ~/.ssh/id_ed25519_tmp
+          chmod 600 ~/.ssh/id_ed25519_tmp
+          echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
 
       - name: Forward Docker port
         uses: lexbritvin/ssh-port-forward-action@main
@@ -56,7 +67,7 @@ jobs:
           port: 2222
           username: "runner"
           jump_hosts: ${{ env.SSH_JUMP_HOST }}@serveo.net
-          private_key: ${{ needs.client-ssh-key.outputs.private-key }}
+          private_key_path: ${{ steps.export-key.key_path }}
           local_forwards: "2376:localhost:2376"
           ssh_flags: -o StrictHostKeyChecking=no -o PreferredAuthentications=publickey
           known_hosts: |
