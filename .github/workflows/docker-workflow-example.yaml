@@ -13,6 +13,9 @@ jobs:
   client-ssh-key:
     name: Generate SSH Key
     runs-on: ubuntu-latest
+    outputs:
+      private-key: ${{ steps.generate-key.outputs.private_key }}
+      public-key: ${{ steps.generate-key.outputs.public_key }}
     steps:
       - name: Generate ED25519 SSH key pair
         id: generate-key
@@ -20,18 +23,12 @@ jobs:
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
 
           echo "Export private ssh key"
-          {
-            echo "CLIENT_SSH_PRIVATE_KEY<<EOF"
-            cat ./id_ed25519
-            echo "EOF"
-          } >> $GITHUB_ENV
+          ENCODED_KEY=$(base64 -w 0 ./id_ed25519)
+          echo "private_key=$ENCODED_KEY" >> "$GITHUB_OUTPUT"
+          #echo "Masking the private key"
+          echo "::add-mask::$ENCODED_KEY"
 
-          echo "Masking the private key"
-          while IFS= read -r line; do
-            echo "::add-mask::$line"
-          done < ./id_ed25519
-
-          echo "CLIENT_SSH_PUBLIC_KEY=$(cat ./id_ed25519.pub)" >> $GITHUB_ENV
+          echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
   
   linux-sidecar:
     name: Linux Docker Sidecar
@@ -44,7 +41,7 @@ jobs:
           wait-for-job: "Windows Job"
           jump-host: ${{ env.SSH_JUMP_SERVER }}
           jump-host-key: ${{ env.SSH_JUMP_HOST_KEY }}
-          authorized-keys: ${{ env.CLIENT_SSH_PUBLIC_KEY }}
+          authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
   
   windows-job:
     name: Windows Job
@@ -61,7 +58,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p ~/.ssh
-          echo "${CLIENT_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519_tmp
+          echo "${{ needs.job1.outputs.encoded_key }}" | base64 -d > ~/.ssh/id_ed25519_tmp
           chmod 600 ~/.ssh/id_ed25519_tmp
           echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
 
