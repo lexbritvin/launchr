@@ -13,9 +13,6 @@ jobs:
   client-ssh-key:
     name: Generate SSH Key
     runs-on: ubuntu-latest
-    outputs:
-      private-key: ${{ steps.generate-key.outputs.private_key }}
-      public-key: ${{ steps.generate-key.outputs.public_key }}
     steps:
       - name: Generate ED25519 SSH key pair
         id: generate-key
@@ -24,17 +21,17 @@ jobs:
 
           echo "Export private ssh key"
           {
-            echo "private_key<<EOF"
+            echo "CLIENT_SSH_PRIVATE_KEY<<EOF"
             cat ./id_ed25519
             echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          } >> $GITHUB_ENV
 
-          #echo "Masking the private key"
-          #while IFS= read -r line; do
-          #  echo "::add-mask::$line"
-          #done < ./id_ed25519
+          echo "Masking the private key"
+          while IFS= read -r line; do
+            echo "::add-mask::$line"
+          done < ./id_ed25519
 
-          echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
+          echo "CLIENT_SSH_PUBLIC_KEY=$(cat ./id_ed25519.pub)" >> $GITHUB_ENV
   
   linux-sidecar:
     name: Linux Docker Sidecar
@@ -47,7 +44,7 @@ jobs:
           wait-for-job: "Windows Job"
           jump-host: ${{ env.SSH_JUMP_SERVER }}
           jump-host-key: ${{ env.SSH_JUMP_HOST_KEY }}
-          authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
+          authorized-keys: ${{ env.CLIENT_SSH_PUBLIC_KEY }}
   
   windows-job:
     name: Windows Job
@@ -62,24 +59,11 @@ jobs:
       - name: Export SSH key to file
         id: export-key
         shell: bash
-        env:
-          PRIVATE_KEY: ${{ needs.client-ssh-key.outputs.private-key }}
         run: |
           mkdir -p ~/.ssh
-          echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
+          echo "${CLIENT_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519_tmp
           chmod 600 ~/.ssh/id_ed25519_tmp
           echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
-
-      - name: test
-        shell: bash
-        run: |
-          echo "${{ steps.export-key.outputs.key_path }}"
-      - name: test
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-key
-          path: ~/.ssh/id_ed25519_tmp
-          retention-days: 1
 
       # Set up the Docker sidecar environment
       - name: Set up Remote Docker
@@ -99,14 +83,6 @@ jobs:
           known_hosts: |
             ${{ env.SSH_JUMP_HOST_KEY }}
 
-      - name: 🛠 Set up tmate session 🛠
-        id: tmate
-        uses: mxschmitt/action-tmate@v3
-        if: ${{ failure() }}
-        with:
-          detached: true
-          limit-access-to-actor: true
-
       - name: Run Docker container - Alpine
         run: |
           docker run --rm alpine:latest sh -c "echo 'Hello from Alpine container'; uname -a"
@@ -115,6 +91,8 @@ jobs:
         run: |
           docker run --rm node:18-alpine node -e "console.log('Node.js version:', process.version)"
 
+# TODO: Install mutagen
+# TODO: Change GOTMPDIR
 #      - name: Run Docker container with volume mount
 #        shell: bash
 #        run: |
