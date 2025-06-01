@@ -52,15 +52,27 @@ jobs:
     env:
       SSH_JUMP_HOST: gh-linux-sidecar-${{ github.run_id }}-sidecar
     steps:
+      - name: Create run subdir
+        shell: bash
+        run: |
+          TMPDIR="run-$(date +%s)-$RANDOM"
+          mkdir -p "$TMPDIR"
+          echo "TMP_WORKING_DIR=$TMPDIR" >> $GITHUB_ENV
+          echo "Created temporary directory: $TMPDIR"
+          cd $TMPDIR
+
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+        with:
+          path: ${{ env.TMP_WORKING_DIR }}
+
       - name: Export SSH key to file
         id: export-key
         shell: bash
         env:
           PRIVATE_KEY: ${{ needs.client-ssh-key.outputs.private-key }}
         run: |
+          pwd
           mkdir -p ~/.ssh
           echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
           chmod 600 ~/.ssh/id_ed25519_tmp
