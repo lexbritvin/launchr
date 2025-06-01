@@ -54,3 +54,28 @@ func TestFsRealpath(t *testing.T) {
 	path = FsRealpath(subfs)
 	assert.Equal(t, "", path)
 }
+
+func TestConvertWindowsPath(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		inp  string
+		exp  string
+	}{
+		{"C drive path", `C:\Users\john\Documents`, `/c/Users/john/Documents`},
+		{"D drive path", `D:\Projects\myapp`, `/d/Projects/myapp`},
+		{"Root C drive", `C:\`, `/c/`},
+		{"UNC path", `\\server\share\folder`, `//server/share/folder`},
+		{"Relative path", `.\relative\path`, `./relative/path`},
+		{"Already Unix path", `/already/unix/path`, `/already/unix/path`},
+		{"Program Files path", `C:\Program Files\Docker`, `/c/Program Files/Docker`}}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := ConvertWindowsPath(tt.inp)
+			assert.Equal(t, tt.exp, result)
+		})
+	}
+}

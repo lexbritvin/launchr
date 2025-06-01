@@ -7,6 +7,7 @@ import (
 	osuser "os/user"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -198,4 +199,43 @@ func EscapePathString(s string) string {
 		return s
 	}
 	return strings.Replace(s, "\\", "\\\\", -1)
+}
+
+// ConvertWindowsPath converts Windows paths to Docker-compatible paths
+func ConvertWindowsPath(windowsPath string) string {
+	// Regular expression to match Windows drive letters (C:, D:, etc.)
+	driveRegex := regexp.MustCompile(`^([A-Za-z]):[\\/](.*)`)
+
+	// Check if it's a Windows absolute path with drive letter
+	if matches := driveRegex.FindStringSubmatch(windowsPath); matches != nil {
+		driveLetter := strings.ToLower(matches[1])
+		restOfPath := matches[2]
+
+		// Convert backslashes to forward slashes
+		restOfPath = strings.ReplaceAll(restOfPath, "\\", "/")
+
+		// Return Docker-style path: /c/path/to/file
+		if restOfPath == "" {
+			return fmt.Sprintf("/%s/", driveLetter)
+		}
+		return fmt.Sprintf("/%s/%s", driveLetter, restOfPath)
+	}
+
+	// Handle root drive paths like "C:\"
+	rootDriveRegex := regexp.MustCompile(`^([A-Za-z]):\\?$`)
+	if matches := rootDriveRegex.FindStringSubmatch(windowsPath); matches != nil {
+		driveLetter := strings.ToLower(matches[1])
+		return fmt.Sprintf("/%s/", driveLetter)
+	}
+
+	// Handle UNC paths (\\server\share\path)
+	if strings.HasPrefix(windowsPath, "\\\\") {
+		// Remove leading \\ and convert backslashes to forward slashes
+		uncPath := strings.TrimPrefix(windowsPath, "\\\\")
+		uncPath = strings.ReplaceAll(uncPath, "\\", "/")
+		return "//" + uncPath
+	}
+
+	// Handle relative paths and other cases - just convert backslashes to forward slashes
+	return strings.ReplaceAll(windowsPath, "\\", "/")
 }

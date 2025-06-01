@@ -524,9 +524,17 @@ func (c *runtimeContainer) createContainerDef(a *Action, cname string) driver.Co
 			containerActionMount,
 		)
 	} else {
+
+		wd := launchr.MustAbs(a.WorkDir())
+		adir := launchr.MustAbs(a.Dir())
+		if runtime.GOOS == "windows" { //nolint:goconst
+			// Convert windows paths C:\my\path -> /c/my/path for docker daemon.
+			wd = launchr.ConvertWindowsPath(wd)
+			adir = launchr.ConvertWindowsPath(adir)
+		}
 		createOpts.Binds = []string{
-			launchr.MustAbs(a.WorkDir()) + ":" + containerHostMount + c.volumeFlags,
-			launchr.MustAbs(a.Dir()) + ":" + containerActionMount + c.volumeFlags,
+			wd + ":" + containerHostMount + c.volumeFlags,
+			adir + ":" + containerActionMount + c.volumeFlags,
 		}
 	}
 	return createOpts

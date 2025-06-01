@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	dockertypes "github.com/docker/docker/api/types"
+	cerrdefs "github.com/containerd/errdefs"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 
@@ -107,7 +107,7 @@ func (d *dockerRuntime) ImageEnsure(ctx context.Context, imgOpts ImageOptions) (
 	// Check if the image already exists.
 	insp, err := d.cli.ImageInspect(ctx, imgOpts.Name)
 	if err != nil {
-		if !errdefs.IsNotFound(err) {
+		if !cerrdefs.IsNotFound(err) {
 			return nil, err
 		}
 	}
@@ -126,7 +126,7 @@ func (d *dockerRuntime) ImageEnsure(ctx context.Context, imgOpts ImageOptions) (
 			return nil, errTar
 		}
 		defer buildContext.Close()
-		resp, errBuild := d.cli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
+		resp, errBuild := d.cli.ImageBuild(ctx, buildContext, build.ImageBuildOptions{
 			Tags:       []string{imgOpts.Name},
 			BuildArgs:  imgOpts.Build.Args,
 			Dockerfile: imgOpts.Build.Buildfile,
