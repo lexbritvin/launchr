@@ -23,10 +23,12 @@ jobs:
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
 
           echo "Export private ssh key"
-          ENCODED_KEY=$(base64 -w 0 ./id_ed25519)
-          echo "private_key=$ENCODED_KEY" >> "$GITHUB_OUTPUT"
-          #echo "Masking the private key"
-          echo "::add-mask::$ENCODED_KEY"
+          {
+            echo "private_key<<EOF"
+            cat ./id_ed25519
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          # TODO: Find a way to protect private key. Masking doesn't work to share between jobs.
 
           echo "public_key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
   
@@ -56,9 +58,11 @@ jobs:
       - name: Export SSH key to file
         id: export-key
         shell: bash
+        env:
+          PRIVATE_KEY: ${{ needs.client-ssh-key.outputs.private-key }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ needs.job1.outputs.encoded_key }}" | base64 -d > ~/.ssh/id_ed25519_tmp
+          echo "$PRIVATE_KEY" > ~/.ssh/id_ed25519_tmp
           chmod 600 ~/.ssh/id_ed25519_tmp
           echo "key_path=~/.ssh/id_ed25519_tmp" >> $GITHUB_OUTPUT
 
