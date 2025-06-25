@@ -131,7 +131,11 @@ jobs:
 
       - name: Set up dependencies
         run: |
-          go install github.com/go-delve/delve/cmd/dlv@latest
+          if [[ "${{ runner.os }}" == "Windows" && "${{ runner.arch }}" == "ARM64" ]]; then
+            echo "⚠️ WARNING: Delve debugger is not available on Windows ARM64. Remote debugging features will be limited."
+          else
+            go install github.com/go-delve/delve/cmd/dlv@latest
+          fi
           go mod download
 
       # Set up the Docker sidecar environment

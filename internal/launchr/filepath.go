@@ -140,7 +140,7 @@ func MkdirTemp(pattern string) (string, error) {
 		// It will be used for Windows and macOS.
 		os.TempDir(),
 	}
-	basePath := ""
+	basePath := os.Getenv("GOTMPDIR")
 	dirPath := ""
 	for _, cand := range baseCand {
 		// Ensure base path exists
