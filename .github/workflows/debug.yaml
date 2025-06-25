@@ -130,6 +130,7 @@ jobs:
           go-version: 'stable'
 
       - name: Set up dependencies
+        shell: bash
         run: |
           if [[ "${{ runner.os }}" == "Windows" && "${{ runner.arch }}" == "ARM64" ]]; then
             echo "⚠️ WARNING: Delve debugger is not available on Windows ARM64. Remote debugging features will be limited."
