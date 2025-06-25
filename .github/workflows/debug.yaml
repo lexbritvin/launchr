@@ -45,28 +45,29 @@ jobs:
           inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
           inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm' || ''
         }}
-      os-type: ${{ startsWith(needs.select-os.outputs.runner-os, 'ubuntu') && 'linux' || '' }}
+      os-type: >-
+        ${{
+          (inputs.os == 'Ubuntu LTS (amd64)' || inputs.os == 'Ubuntu LTS (arm64)') && 'linux' ||
+          (inputs.os == 'macOS Latest (arm64)' || inputs.os == 'macOS 13 (amd64)') && 'macos' ||
+          (inputs.os == 'Windows Latest (amd64)' || inputs.os == 'Windows Latest (arm64)') && 'windows' ||
+          ''
+        }}
       private-key: ${{ steps.generate-key.outputs.private-key }}
       public-key: ${{ steps.generate-key.outputs.public-key }}
     steps:
-    - name: Echo selected OS
-      run: |
-        echo "Selected OS: ${{ inputs.os }}"
-        echo "Mapped to runner: ${{ needs.select-os.outputs.runner-os }}"
-        echo "OS Type: ${{ startsWith(needs.select-os.outputs.runner-os, 'ubuntu') && 'linux' || '' }}"
-    - name: Generate ED25519 SSH key pair
-      id: generate-key
-      run: |
-        ssh-keygen -t ed25519 -N "" -f ./id_ed25519
-
-        echo "Export private ssh key"
-        {
-          echo "private-key<<EOF"
-          cat ./id_ed25519
-          echo "EOF"
-        } >> "$GITHUB_OUTPUT"
-
-        echo "public-key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
+      - name: Generate ED25519 SSH key pair
+        id: generate-key
+        run: |
+          ssh-keygen -t ed25519 -N "" -f ./id_ed25519
+  
+          echo "Export private ssh key"
+          {
+            echo "private-key<<EOF"
+            cat ./id_ed25519
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+  
+          echo "public-key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
 
   linux-sidecar:
     name: Linux Docker Sidecar
@@ -87,7 +88,7 @@ jobs:
         uses: lexbritvin/wait-action@v1
         with:
           condition-type: 'job'
-          job-name: '[wait] '
+          job-name: '/How to connect/'
           timeout-seconds: 1800
           poll-interval-seconds: 30
 
