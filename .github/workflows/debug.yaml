@@ -36,25 +36,47 @@ jobs:
     name: 🗺 Select OS - ${{ inputs.os }}
     runs-on: ubuntu-latest
     outputs:
-      runner-os: >-
-        ${{
-          inputs.os == 'Ubuntu LTS (amd64)' && 'ubuntu-latest' ||
-          inputs.os == 'Ubuntu LTS (arm64)' && 'ubuntu-24.04-arm' ||
-          inputs.os == 'macOS Latest (arm64)' && 'macos-latest' ||
-          inputs.os == 'macOS 13 (amd64)' && 'macos-13' ||
-          inputs.os == 'Windows Latest (amd64)' && 'windows-latest' ||
-          inputs.os == 'Windows Latest (arm64)' && 'windows-11-arm' || ''
-        }}
-      os-type: >-
-        ${{
-          (inputs.os == 'Ubuntu LTS (amd64)' || inputs.os == 'Ubuntu LTS (arm64)') && 'linux' ||
-          (inputs.os == 'macOS Latest (arm64)' || inputs.os == 'macOS 13 (amd64)') && 'macos' ||
-          (inputs.os == 'Windows Latest (amd64)' || inputs.os == 'Windows Latest (arm64)') && 'windows' ||
-          ''
-        }}
+      runner-os: ${{ steps.map-os.outputs.runner-os }}
+      os-type: ${{ steps.map-os.outputs.os-type }}
       private-key: ${{ steps.generate-key.outputs.private-key }}
       public-key: ${{ steps.generate-key.outputs.public-key }}
     steps:
+      - name: Map OS selection
+        id: map-os
+        env:
+          INPUT_OS: ${{ inputs.os }}
+        run: |
+          case "$INPUT_OS" in
+            "Ubuntu LTS (amd64)")
+              echo "runner-os=ubuntu-latest" >> $GITHUB_OUTPUT
+              echo "os-type=linux" >> $GITHUB_OUTPUT
+              ;;
+            "Ubuntu LTS (arm64)")
+              echo "runner-os=ubuntu-24.04-arm" >> $GITHUB_OUTPUT
+              echo "os-type=linux" >> $GITHUB_OUTPUT
+              ;;
+            "macOS Latest (arm64)")
+              echo "runner-os=macos-latest" >> $GITHUB_OUTPUT
+              echo "os-type=macos" >> $GITHUB_OUTPUT
+              ;;
+            "macOS 13 (amd64)")
+              echo "runner-os=macos-13" >> $GITHUB_OUTPUT
+              echo "os-type=macos" >> $GITHUB_OUTPUT
+              ;;
+            "Windows Latest (amd64)")
+              echo "runner-os=windows-latest" >> $GITHUB_OUTPUT
+              echo "os-type=windows" >> $GITHUB_OUTPUT
+              ;;
+            "Windows Latest (arm64)")
+              echo "runner-os=windows-11-arm" >> $GITHUB_OUTPUT
+              echo "os-type=windows" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "runner-os=ubuntu-latest" >> $GITHUB_OUTPUT
+              echo "os-type=linux" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
       - name: Generate ED25519 SSH key pair
         id: generate-key
         run: |
