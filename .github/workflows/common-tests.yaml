@@ -1,14 +1,14 @@
-name: Code coverage
+name: 🧪 Code Coverage & Testing Pipeline
 on:
   workflow_call:
-    inputs: 
+    inputs:
       use-docker-sidecar:
-        description: 'Enable Docker sidecar for remote testing environments'
+        description: '🐳 Enable Docker sidecar for remote testing environments'
         required: false
         type: boolean
         default: false
       use-sidecar-remote-share:
-        description: 'Enable remote file sharing in Docker sidecar'
+        description: '📁 Enable remote file sharing in Docker sidecar'
         required: false
         type: boolean
         default: false
@@ -17,7 +17,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Opinionated defaults. Can be overridden in GitHub UI.
+# 🔧 Opinionated defaults. Can be overridden in GitHub UI.
 env:
   SSH_JUMP_HOST: ssh-j.com
   SSH_JUMP_PORT: '22'
@@ -28,18 +28,19 @@ env:
 
 jobs:
   client-ssh-key:
-    name: Generate SSH Key
+    name: 🔑 Generate SSH Key
     runs-on: ubuntu-latest
     outputs:
       private-key: ${{ steps.generate-key.outputs.private-key }}
       public-key: ${{ steps.generate-key.outputs.public-key }}
     steps:
-      - name: Generate ED25519 SSH key pair
+      - name: 🔐 Generate ED25519 SSH key pair
         id: generate-key
         run: |
+          echo "🔑 Generating SSH key pair..."
           ssh-keygen -t ed25519 -N "" -f ./id_ed25519
 
-          echo "Export private ssh key"
+          echo "📤 Exporting private SSH key"
           {
             echo "private-key<<EOF"
             cat ./id_ed25519
@@ -47,14 +48,15 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           echo "public-key=$(cat ./id_ed25519.pub)" >> $GITHUB_OUTPUT
+          echo "✅ SSH key pair generated successfully!"
 
   linux-sidecar:
-    name: Linux Docker Sidecar
+    name: 🐳 Linux Docker Sidecar
     needs: [ client-ssh-key ]
     runs-on: ubuntu-latest
     if: ${{ inputs.use-docker-sidecar }}
     steps:
-      - name: Run Linux Docker sidecar
+      - name: 🚀 Run Linux Docker sidecar
         uses: lexbritvin/docker-sidecar-action/run-sidecar@main
         with:
           ssh-server-authorized-keys: ${{ needs.client-ssh-key.outputs.public-key }}
@@ -63,7 +65,7 @@ jobs:
           ssh-jump-host-keys: ${{ env.SSH_JUMP_HOST_KEYS }}
           ssh-jump-forward: ${{ env.SSH_JUMP_FORWARD }}
 
-      - name: ⚡ Wait for related jobs
+      - name: ⏳ Wait for related jobs
         uses: lexbritvin/wait-action@v1
         with:
           condition-type: 'job'
@@ -72,7 +74,7 @@ jobs:
           poll-interval-seconds: 30
 
   test:
-    name: Test ${{ matrix.name }} ${{ matrix.needs-sidecar && '(sidecar)' }}
+    name: 🧪 Test ${{ matrix.name }} ${{ matrix.needs-sidecar && '(sidecar)' }}
     strategy:
       matrix:
         include:
@@ -105,25 +107,28 @@ jobs:
     env:
       WORKING_DIR: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
         with:
           path: ${{ env.WORKING_DIR }}
 
-      - name: OS Info
+      - name: 📊 OS Info
         uses: lexbritvin/os-info-action@v1
 
-      - name: Set up Go
+      - name: 🏗️ Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
           go-version-file: ${{ env.WORKING_DIR }}/go.mod
 
-      - name: Prepare dependencies
+      - name: 📦 Prepare dependencies
         run: |
+          echo "📥 Downloading Go modules..."
           go mod download
+          echo "✅ Dependencies downloaded successfully!"
 
       # Set up the Docker sidecar environment
-      - name: Set up Remote Docker
+      - name: 🐳 Set up Remote Docker
         id: docker-setup
         uses: lexbritvin/docker-sidecar-action/setup-remote-docker@main
         if: ${{ matrix.needs-sidecar && inputs.use-docker-sidecar }}
@@ -132,25 +137,37 @@ jobs:
           working-directory: ${{ env.WORKING_DIR }}
           use-remote-share: ${{ inputs.use-sidecar-remote-share }}
 
-      - name: Go Test
+      - name: 🧪 Go Test
         id: go-tests
         run: |
+          echo "🚀 Starting Go tests..."
           export GOTMPDIR="$(pwd)/.gotmp"
           mkdir -p $GOTMPDIR
+          echo "📁 Using temp directory: $GOTMPDIR"
+          
+          echo "🔍 Running tests..."
           go test ./...
+          
+          echo "✅ All tests completed successfully!"
 
   lint:
-    name: 🧹 Lint
+    name: 🧹 Lint & Code Quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: 🏗️ Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
 
-      - name: Lint
+      - name: 🔍 Lint Code
         run: |
+          echo "🔧 Installing linter..."
           make .install-lint
-          bin/golangci-lint run --timeout=5m ./... 
+          
+          echo "🧹 Running code linting..."
+          bin/golangci-lint run --timeout=5m ./...
+          
+          echo "✅ Code linting completed successfully!"
