@@ -151,4 +151,6 @@ jobs:
           go-version: 'stable'
 
       - name: Lint
-        run: make .install-lint .lint
+        run: |
+          make .install-lint
+          bin/golangci-lint run --timeout=5m ./... 
