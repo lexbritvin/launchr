@@ -86,8 +86,15 @@ jobs:
     needs: [ client-ssh-key ]
     continue-on-error: ${{ matrix.continue-on-error || false }}
     # TODO: Have different working-directory per runner to be on different paths on linux-sidecar.
+    defaults:
+      run:
+        working-directory: ${{ matrix.os }}
+    env:
+      WORKING_DIR: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: ${{ env.WORKING_DIR }}
 
       - name: OS Info
         uses: lexbritvin/os-info-action@v1
@@ -98,7 +105,9 @@ jobs:
           go-version: 'stable'
 
       - name: Prepare dependencies
-        run: go mod download
+        run: |
+          mkdir .gotmp
+          go mod download
 
       # Set up the Docker sidecar environment
       - name: Set up Remote Docker
@@ -107,12 +116,13 @@ jobs:
         if: matrix.needs-sidecar
         with:
           private-key: ${{ needs.client-ssh-key.outputs.private-key }}
+          working-directory: ${{ env.WORKING_DIR }}
           use-remote-share: 'true'
 
       - name: Go Test
         id: go-tests
         env:
-          # Change GOTMPDIR for Windows/MacOS for remote context.
+          # Change GOTMPDIR for Windows/MacOS and remote context.
           GOTMPDIR: "${{ github.workspace }}/.gotmp"
         run: |
           go test ./...
@@ -129,4 +139,4 @@ jobs:
           go-version: 'stable'
 
       - name: Lint
-        run: make lint # TODO: do not autofix
+        run: make lint

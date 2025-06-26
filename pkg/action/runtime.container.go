@@ -542,17 +542,9 @@ func (c *runtimeContainer) createContainerDef(a *Action, cname string) driver.Co
 			containerActionMount,
 		)
 	} else {
-
-		wd := launchr.MustAbs(a.WorkDir())
-		adir := launchr.MustAbs(a.Dir())
-		if runtime.GOOS == "windows" { //nolint:goconst
-			// Convert windows paths C:\my\path -> /c/my/path for docker daemon.
-			wd = "/mnt" + launchr.ConvertWindowsPath(wd)
-			adir = "/mnt" + launchr.ConvertWindowsPath(adir)
-		}
 		createOpts.Binds = []string{
-			wd + ":" + containerHostMount + c.volumeFlags,
-			adir + ":" + containerActionMount + c.volumeFlags,
+			normalizeContainerMountPath(a.WorkDir()) + ":" + containerHostMount + c.volumeFlags,
+			normalizeContainerMountPath(a.Dir()) + ":" + containerActionMount + c.volumeFlags,
 		}
 	}
 	return createOpts
@@ -666,4 +658,13 @@ func (c *runtimeContainer) isSELinuxEnabled(ctx context.Context) bool {
 
 func (c *runtimeContainer) isRemote() bool {
 	return c.isRemoteRuntime || c.isSetRemote
+}
+
+func normalizeContainerMountPath(path string) string {
+	path = launchr.MustAbs(path)
+	if runtime.GOOS == "windows" { //nolint:goconst
+		// Convert windows paths C:\my\path -> /c/my/path for docker daemon.
+		return "/mnt" + launchr.ConvertWindowsPath(path)
+	}
+	return path
 }
