@@ -59,7 +59,7 @@ install:
 
 # Install and run linters
 .PHONY: lint
-lint: .install-lint .lint
+lint: .install-lint .lint-fix
 
 # Install golangci-lint binary
 .PHONY: .install-lint
@@ -69,7 +69,11 @@ ifeq ($(wildcard $(GOLANGCI_BIN)),)
 endif
 
 # Runs linters
-.PHONY: .lint
-.lint:
+.PHONY: .lint-fix
+.lint-fix:
 	$(info Running lint...)
 	$(GOLANGCI_BIN) run --fix ./...
+
+.PHONY: .lint
+.lint:
+	$(GOLANGCI_BIN) run

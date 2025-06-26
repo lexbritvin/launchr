@@ -131,7 +131,10 @@ func MkdirTemp(pattern string) (string, error) {
 	if err != nil {
 		u = &osuser.User{}
 	}
+
 	baseCand := []string{
+		// User defined.
+		strings.TrimSpace(os.Getenv("GOTMPDIR")),
 		// Linux tmpfs paths.
 		"/dev/shm",           // Should be available for all.
 		"/run/user/" + u.Uid, // User specific.
@@ -140,7 +143,10 @@ func MkdirTemp(pattern string) (string, error) {
 		// It will be used for Windows and macOS.
 		os.TempDir(),
 	}
-	basePath := os.Getenv("GOTMPDIR")
+	if baseCand[0] == "" {
+		baseCand = baseCand[1:]
+	}
+	basePath := ""
 	dirPath := ""
 	for _, cand := range baseCand {
 		// Ensure base path exists

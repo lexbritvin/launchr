@@ -29,10 +29,11 @@ func Test_Action(t *testing.T) {
 	require.NotEmpty(actions)
 	act := actions[0]
 	// Override the real path to skip [Action.syncToDisc].
-	act.fs.real = "/fstest/"
+	act.fs.real = filepath.FromSlash("/fstest/")
 
 	// Test dir
 	assert.Equal(act.fs.real+filepath.Dir(act.fpath), act.Dir())
+	// Test dir when fpath changed.
 	act.fpath = filepath.FromSlash("test/file/path/action.yaml")
 	assert.Equal(filepath.FromSlash(act.fs.real+"test/file/path"), act.Dir())
 
