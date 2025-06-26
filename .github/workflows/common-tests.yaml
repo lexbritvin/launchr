@@ -1,6 +1,17 @@
 name: Code coverage
 on:
   workflow_call:
+    inputs: 
+      use-docker-sidecar:
+        description: 'Enable Docker sidecar for remote testing environments'
+        required: false
+        type: boolean
+        default: false
+      use-sidecar-remote-share:
+        description: 'Enable remote file sharing in Docker sidecar'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,6 +52,7 @@ jobs:
     name: Linux Docker Sidecar
     needs: [ client-ssh-key ]
     runs-on: ubuntu-latest
+    if: ${{ inputs.use-docker-sidecar }}
     steps:
       - name: Run Linux Docker sidecar
         uses: lexbritvin/docker-sidecar-action/run-sidecar@main
@@ -88,6 +100,7 @@ jobs:
     # TODO: Have different working-directory per runner to be on different paths on linux-sidecar.
     defaults:
       run:
+        shell: bash
         working-directory: ${{ matrix.os }}
     env:
       WORKING_DIR: ${{ matrix.os }}
@@ -113,11 +126,11 @@ jobs:
       - name: Set up Remote Docker
         id: docker-setup
         uses: lexbritvin/docker-sidecar-action/setup-remote-docker@main
-        if: matrix.needs-sidecar
+        if: ${{ matrix.needs-sidecar && inputs.use-docker-sidecar }}
         with:
           private-key: ${{ needs.client-ssh-key.outputs.private-key }}
           working-directory: ${{ env.WORKING_DIR }}
-          use-remote-share: 'true'
+          use-remote-share: ${{ inputs.use-sidecar-remote-share }}
 
       - name: Go Test
         id: go-tests

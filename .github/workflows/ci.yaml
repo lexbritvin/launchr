@@ -15,3 +15,6 @@ jobs:
   common-tests:
     name: 🛡 Test
     uses: ./.github/workflows/common-tests.yaml
+    with:
+      use-docker-sidecar: true        # Used for full testing environment
+      use-sidecar-remote-share: true  # Used for full testing environment
