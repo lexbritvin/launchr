@@ -1,54 +1,117 @@
+# =============================================================================
+# Test Script: Binary Building and Version Verification
+# =============================================================================
 # DO NOT USE IT AS A REFERENCE!
-# This is a special test case
-# where we build the bin from the source.
+# This is a special test case where we build the bin from the source.
 # See other files for examples.
+#
+# This script tests:
+# 1. Basic binary building with version ldflags
+# 2. Recursive binary building (building new binaries with existing ones)
+# 3. Input validation for application names
+# 4. Plugin integration and version reporting
+# 5. Generated action functionality
+# =============================================================================
 
-# Test 1: Check the version string when built with ldflags
+# =============================================================================
+# SETUP: Base Environment Variables
+# =============================================================================
+
+# Application metadata
 env APP_NAME=myapp
 env APP_VERSION='v1.1.0-testscript'
 env APP_BUILT_WITH='testscript v1.0.0'
+
+# Regex patterns for validation
 env ARCH_RGX=[a-z0-9]+/[a-z0-9]+
+
+# Computed version strings
 env APP_VERSION_SHORT=$APP_NAME' version '${APP_VERSION@R}' '$ARCH_RGX
 
-# Build the binary.
+# Build environment
 env HOME=$TMPDIR
+
+# =============================================================================
+# TEST 1: Basic Binary Build and Version Check
+# =============================================================================
+# Purpose: Build a binary with ldflags and verify version output format
+
+# Configure build flags with version information
 env APP_LDFLAGS=-X' '"$CORE_PKG.name=$APP_NAME"' -X '"$CORE_PKG.version=$APP_VERSION"' -X '"$CORE_PKG.builtWith=$APP_BUILT_WITH"
+
+# Build the binary with version ldflags
 exec go build -C $REPO_PATH -ldflags $APP_LDFLAGS -o $WORK/$APP_NAME ./cmd/launchr
 
-# Test 1: Check version output.
+# Verify version output matches expected format: "appname version X.Y.Z arch"
 exec ./$APP_NAME --version
 stdout ^$APP_VERSION_SHORT'\nBuilt with '${APP_BUILT_WITH@R}\z$
 ! stderr .
 
-# Test 2: Build a new binary using the old, check the version string.
-# Replace the core to always build from the latest.
+# =============================================================================
+# TEST 2: Recursive Binary Building with Core Replacement
+# =============================================================================
+# Purpose: Build a new binary using the previously built binary,
+# then verify the version includes core replacement information
+
+# Configuration for second binary
 env APP_NAME_2=${APP_NAME}new
 env APP_VERSION_2='v1.2.0-testscript'
+
+# Expected version strings for the new binary
 env APP_VERSION_CORE='Core version: v.*\nCore replace: '${CORE_PKG@R}' v.* => '${REPO_PATH@R}' \(devel\)'
 env APP_VERSION_FULL=$APP_NAME_2' version '$APP_VERSION_2' '$ARCH_RGX'\nBuilt with '${APP_VERSION_SHORT}'\n'$APP_VERSION_CORE
 
+# Build new binary with core replacement using the first binary
 exec ./$APP_NAME build --no-cache --tag nethttpomithttp2 -n $APP_NAME_2 -o $APP_NAME_2 -r $CORE_PKG=$REPO_PATH --build-version $APP_VERSION_2
 
+# Verify the full version output includes core replacement information
 exec ./$APP_NAME_2 --version
 stdout ^$APP_VERSION_FULL'\z$'
 ! stderr .
 
-# Test 3: Build a new binary with incorrect app name.
+# =============================================================================
+# TEST 3: Input Validation - Invalid Application Name
+# =============================================================================
+# Purpose: Verify that invalid application names are rejected
+
+# Attempt to build with invalid name (contains underscore)
 ! exec ./$APP_NAME build -n under_score -o under_score --build-version invalid
+
+# Verify appropriate error message is displayed
 stdout 'invalid application name "under_score"'
 
-# Test 4: Build with plugins and replace.
-# Add 1 arbitrary repository as a plugin, we need to test a public source but prevent possible build errors.
-# We will may have a bit broken version, but it's ok for the test.
-env APP_PLUGIN_1=golang.org/x/term
-# Add 1 test plugin from test data with replace.
-env APP_PLUGIN_2=example.com/genaction@v1.1.1
-exec ./$APP_NAME build -n $APP_NAME_2 -o $APP_NAME_2 -r $CORE_PKG=$REPO_PATH -p $APP_PLUGIN_1 -p $APP_PLUGIN_2 -r $APP_PLUGIN_2=$REPO_PATH/test/plugins/genaction --build-version $APP_VERSION_2
+# =============================================================================
+# TEST 4: Plugin Integration and Version Reporting
+# =============================================================================
+# Purpose: Build binary with plugins and verify plugin information in version output
 
+# Plugin configuration
+# External plugin: public repository (may have build issues but acceptable for testing)
+env APP_PLUGIN_EXTERNAL=golang.org/x/term
+
+# Local plugin: test plugin with version and replacement
+env APP_PLUGIN_LOCAL=example.com/genaction@v1.1.1
+env APP_PLUGIN_LOCAL_PATH=$REPO_PATH/test/plugins/genaction
+
+# Build binary with both external and local plugins
+exec ./$APP_NAME build -n $APP_NAME_2 -o $APP_NAME_2 -r $CORE_PKG=$REPO_PATH -p $APP_PLUGIN_EXTERNAL -p $APP_PLUGIN_LOCAL -r $APP_PLUGIN_LOCAL=$APP_PLUGIN_LOCAL_PATH --build-version $APP_VERSION_2
+
+# Verify version output includes plugin information
 exec ./$APP_NAME_2 --version
 stdout ^$APP_VERSION_FULL'\nPlugins:\n  - example\.com/genaction v1\.1\.1\n  - example\.com/genaction v1\.1\.1 => '$REPO_PATH'/test/plugins/genaction \(devel\)\n\z$'
 ! stderr .
 
-# Test 5: Check the generated action is included and works well.
+# =============================================================================
+# TEST 5: Generated Action Functionality
+# =============================================================================
+# Purpose: Verify that the generated action from plugins works correctly
+
+# Execute the generated action from the plugin
 exec ./$APP_NAME_2 genaction:example
+
+# Verify the action produces expected output
 stdout 'hello world'
+
+# =============================================================================
+# End of Tests
+# =============================================================================

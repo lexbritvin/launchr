@@ -5,11 +5,19 @@ import (
 	"testing"
 
 	"github.com/rogpeppe/go-internal/testscript"
+
+	coretest "github.com/launchrctl/launchr/test"
 )
 
 func TestMain(m *testing.M) {
+
 	testscript.Main(m, map[string]func(){
 		"launchr": RunAndExit,
+		"testapp": func() {
+			// Set global application name.
+			name = "testapp"
+			RunAndExit()
+		},
 	})
 }
 
@@ -44,5 +52,6 @@ func TestScriptCommon(t *testing.T) {
 		RequireExplicitExec: true,
 		RequireUniqueNames:  true,
 		ContinueOnError:     true,
+		Cmds:                coretest.TestScriptCmds,
 	})
 }
