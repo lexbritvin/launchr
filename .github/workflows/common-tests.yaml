@@ -107,7 +107,6 @@ jobs:
 
       - name: Prepare dependencies
         run: |
-          mkdir .gotmp
           go mod download
 
       # Set up the Docker sidecar environment
@@ -122,10 +121,9 @@ jobs:
 
       - name: Go Test
         id: go-tests
-        env:
-          # Change GOTMPDIR for Windows/MacOS and remote context.
-          GOTMPDIR: ".gotmp"
         run: |
+          export GOTMPDIR="$(pwd)/.gotmp"
+          mkdir -p $GOTMPDIR
           go test ./...
 
   lint:
