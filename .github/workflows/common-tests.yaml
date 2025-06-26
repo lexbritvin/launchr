@@ -103,6 +103,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
+          go-version-file: ${{ env.WORKING_DIR }}/go.mod
 
       - name: Prepare dependencies
         run: |
