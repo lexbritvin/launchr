@@ -123,7 +123,7 @@ jobs:
         id: go-tests
         env:
           # Change GOTMPDIR for Windows/MacOS and remote context.
-          GOTMPDIR: "${{ github.workspace }}/.gotmp"
+          GOTMPDIR: ".gotmp"
         run: |
           go test ./...
 
