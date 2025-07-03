@@ -10,7 +10,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-
 	testscript.Main(m, map[string]func(){
 		"launchr": RunAndExit,
 		"testapp": func() {
@@ -49,6 +48,17 @@ func TestScriptCommon(t *testing.T) {
 	t.Parallel()
 	testscript.Run(t, testscript.Params{
 		Dir:                 "test/testdata/common",
+		RequireExplicitExec: true,
+		RequireUniqueNames:  true,
+		ContinueOnError:     true,
+		Cmds:                coretest.TestScriptCmds,
+	})
+}
+
+func TestScriptInput(t *testing.T) {
+	t.Parallel()
+	testscript.Run(t, testscript.Params{
+		Dir:                 "test/testdata/input",
 		RequireExplicitExec: true,
 		RequireUniqueNames:  true,
 		ContinueOnError:     true,

@@ -22,6 +22,7 @@ const (
 // TestScriptCmds provides custom commands for testscript execution
 var TestScriptCmds = map[string]func(ts *testscript.TestScript, neg bool, args []string){
 	"txtproc": cmdTxtProc,
+	"dlv":     dlvCommand,
 }
 
 // cmdTxtProc provides flexible text processing capabilities
