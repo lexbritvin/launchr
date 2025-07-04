@@ -4,8 +4,7 @@ import (
 	"net"
 	"path/filepath"
 	"strconv"
-	// Include an internal method of the testscript module.
-	_ "unsafe"
+	_ "unsafe" // Include an internal method of the testscript module.
 
 	"github.com/rogpeppe/go-internal/testscript"
 )
