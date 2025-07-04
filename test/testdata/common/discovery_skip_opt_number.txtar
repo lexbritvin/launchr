@@ -29,7 +29,7 @@ stdout 'Action "opt-number-incorrect-default" was skipped:'
 
 # Validate specific type mismatch error details:
 # Should identify the type conflict between string and float64
-stdout 'given value type \(string\) and expected type \(float64\) mismatch, line 9, col 16'
+stdout 'given value type \(string\) and expected type \(float64\) mismatch, line 13, col 16'
 
 # Validate clean execution (no error output to stderr)
 ! stderr .

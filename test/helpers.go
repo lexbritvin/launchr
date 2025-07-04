@@ -128,7 +128,7 @@ func processText(content, operation, pattern, replacement string) (string, error
 		return strings.ReplaceAll(content, pattern, replacement), nil
 
 	case opReplaceRegex:
-		re, err := regexp.Compile(pattern)
+		re, err := regexp.Compile("(?m)" + pattern)
 		if err != nil {
 			return "", fmt.Errorf("invalid regex %q: %v", pattern, err)
 		}
