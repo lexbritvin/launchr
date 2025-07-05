@@ -84,8 +84,8 @@ env LAUNCHR_LOG_FORMAT=plain
 exec launchr --log-level=INFO testplugin:log-levels
 cp stdout plain_format_env_output.txt
 # Remove timestamps from both files for comparison - match beginning of each line
-txtproc replace-regex 'time=[0-9T:.+-]+ ' '' plain_format_env_output.txt plain_env_normalized.txt
-txtproc replace-regex 'time=[0-9T:.+-]+ ' '' plain_format_flag_output.txt plain_flag_normalized.txt
+txtproc replace-regex 'time=[0-9T:.+-Z]+ ' '' plain_format_env_output.txt plain_env_normalized.txt
+txtproc replace-regex 'time=[0-9T:.+-Z]+ ' '' plain_format_flag_output.txt plain_flag_normalized.txt
 cmp plain_flag_normalized.txt plain_env_normalized.txt
 
 # Environment variable: Pretty format
