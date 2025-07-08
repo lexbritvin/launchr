@@ -1,8 +1,7 @@
+// Package plugins includes all test plugins.
 package plugins
 
 import (
 	// Include test plugins.
-	_ "github.com/launchrctl/launchr/test/plugins/loglevels"
-	_ "github.com/launchrctl/launchr/test/plugins/printinput"
-	_ "github.com/launchrctl/launchr/test/plugins/registeredfs"
+	_ "github.com/launchrctl/launchr/test/plugins/testactions"
 )

@@ -13,6 +13,9 @@
 # 5. Generated action functionality
 # =============================================================================
 
+[short] skip 'skipping test in short mode'
+[windows] skip 'skipping test on Windows'
+
 # =============================================================================
 # SETUP: Base Environment Variables
 # =============================================================================

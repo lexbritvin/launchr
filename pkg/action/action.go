@@ -162,6 +162,7 @@ func (a *Action) syncToDisk() (err error) {
 	}
 	// Set a new filesystem to a cached path.
 	a.fs = NewDiscoveryFS(os.DirFS(tmpDir), a.fs.wd)
+	a.fpath = filepath.Base(a.fpath)
 	return
 }
 

@@ -1,12 +1,17 @@
+// Package test contains functionality to test
 package test
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+	_ "unsafe" // Include an internal method of the testscript module.
 
 	"github.com/rogpeppe/go-internal/testscript"
 
@@ -26,8 +31,8 @@ const (
 
 // TestScriptCmds provides custom commands for testscript execution
 var TestScriptCmds = map[string]func(ts *testscript.TestScript, neg bool, args []string){
-	"txtproc": cmdTxtProc,
-	"dlv":     dlvCommand,
+	"txtproc": txtprocCmd,
+	"dlv":     dlvCmd,
 	"sleep":   sleepCmd,
 }
 
@@ -64,7 +69,7 @@ func sleepCmd(ts *testscript.TestScript, neg bool, args []string) {
 	time.Sleep(duration)
 }
 
-// cmdTxtProc provides flexible text processing capabilities
+// txtprocCmd provides flexible text processing capabilities
 // Usage examples:
 //
 //	txtproc replace 'old' 'new' input.txt output.txt
@@ -73,7 +78,7 @@ func sleepCmd(ts *testscript.TestScript, neg bool, args []string) {
 //	txtproc remove-regex 'pattern' input.txt output.txt
 //	txtproc extract-lines 'pattern' input.txt output.txt
 //	txtproc extract-regex 'pattern' input.txt output.txt
-func cmdTxtProc(ts *testscript.TestScript, neg bool, args []string) {
+func txtprocCmd(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
 		ts.Fatalf("txtproc does not support negation")
 	}
@@ -224,4 +229,101 @@ func processText(content, operation, pattern, replacement string) (string, error
 	default:
 		return "", fmt.Errorf("unknown operation %q", operation)
 	}
+}
+
+//go:linkname lookPath github.com/rogpeppe/go-internal/internal/os/execpath.Look
+func lookPath(file string, getenv func(string) string) (string, error)
+
+// isDebugMode checks if the current binary is running in debug mode
+func isDebugMode() bool {
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		return false
+	}
+
+	// Check for debug-related build settings
+	for _, setting := range buildInfo.Settings {
+		if setting.Key == "-gcflags" {
+			// Check if gcflags contains debug-related flags
+			if strings.Contains(setting.Value, "-N") && strings.Contains(setting.Value, "-l") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// dlvCmd implements a custom testscript command for debugging with Delve
+func dlvCmd(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("dlv command does not support negation")
+	}
+
+	if len(args) < 1 {
+		ts.Fatalf("dlv: missing binary name\nUsage: dlv <binary> [args...]")
+	}
+
+	// Check if running in debug mode
+	if !isDebugMode() {
+		ts.Fatalf("dlv command requires the tests to be run with debug flags")
+	}
+
+	command := args[0]
+	binaryArgs := args[1:]
+	if filepath.Base(command) == command {
+		if lp, err := lookPath(command, ts.Getenv); err != nil {
+			ts.Fatalf("error when looking for %s: %v", command, err)
+		} else {
+			command = lp
+		}
+	}
+
+	// Find an available port
+	port := findAvailablePort()
+
+	// Log connection information
+	ts.Logf("=== Delve Debug Server ===")
+	ts.Logf("Debugging binary: %s", command)
+	ts.Logf("Port: %d", port)
+	ts.Logf("Connect with: dlv connect 127.0.0.1:%d", port)
+	ts.Logf("GoLand Remote Debug: 127.0.0.1:%d", port)
+	ts.Logf("=========================")
+
+	// Build dlv command arguments
+	cmdArgs := []string{
+		"exec", command,
+		"--listen=127.0.0.1:" + strconv.Itoa(port),
+		"--headless=true",
+		"--api-version=2",
+		"--accept-multiclient",
+	}
+
+	// Add binary arguments if any
+	if len(binaryArgs) > 0 {
+		cmdArgs = append(cmdArgs, "--")
+		cmdArgs = append(cmdArgs, binaryArgs...)
+	}
+
+	// Execute dlv using testscript's exec method
+	_ = ts.Exec("dlv", cmdArgs...)
+}
+
+// findAvailablePort finds an available port starting from 2345
+func findAvailablePort() int {
+	for port := 2345; port <= 2355; port++ {
+		if isPortAvailable(port) {
+			return port
+		}
+	}
+	return 2345 // fallback
+}
+
+// isPortAvailable checks if a port is available
+func isPortAvailable(port int) bool {
+	ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
+	if err != nil {
+		return false
+	}
+	_ = ln.Close()
+	return true
 }

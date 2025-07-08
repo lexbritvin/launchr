@@ -51,11 +51,13 @@ stdout '^Successfully tagged my/testimage-3:buz$'
 stdout '^MY_ARG_1=foo MY_ARG_2=bar$'
 ! stderr .
 
-exec launchr test-embed-fs:container-image-build
+exec launchr test-registered-embed-fs:container-image-build
 stdout '^Image "my/testimage-embed:latest" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
 stdout '^Successfully tagged my/testimage-embed:latest$'
 stdout '^uid=\d+\(foobar\) gid=\d+\(.+\) groups=\d+\(.+\)$'
+stdout '^action ls: Dockerfile action\.yaml container\.txt main\.sh$'
+stdout '^host ls: actions container\.txt$'
 grep '^hello host from container$' ./container.txt
 ! stderr .
 
@@ -68,6 +70,7 @@ grep '^my\/testimage-3:bar h1:' ./.launchr/actions.sum
 grep '^my\/testimage-3:buz h1:' ./.launchr/actions.sum
 grep '^my\/testimage-embed:latest h1:' ./.launchr/actions.sum
 
+# Clean up generated images.
 exec docker rmi -f my/testimage-1:latest my/testimage-1:bar my/testimage-1:buz
 exec docker rmi -f my/testimage-2:foo
 exec docker rmi -f my/testimage-3 my/testimage-3:bar my/testimage-3:buz

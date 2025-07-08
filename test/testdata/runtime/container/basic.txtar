@@ -1,5 +1,3 @@
-# TODO: Test embed docker action.
-
 # Test env variables in actions.
 env HOST_ENV_1=bar
 env HOST_ENV_2=buz
@@ -32,6 +30,16 @@ stdout '^exec command$'
 exec launchr test-exec --exec --entrypoint 'echo' -- 'entrypoint command'
 stdout '^entrypoint command$'
 ! stdout '^action command$'
+! stderr .
+
+# Test signal forwarding
+! exec launchr test-signal &appint&
+sleep 2s
+kill -INT appint
+wait appint
+stdout '^Waiting for signals...$'
+stdout '^Received signal: SIGINT$'
+stdout 'action "test-signal" finished with exit code 42'
 ! stderr .
 
 -- actions/test-env-vars/action.yaml  --
@@ -91,3 +99,21 @@ runtime:
     - |
       echo "output to stdout"
       echo "output to stderr" >&2
+      
+-- actions/test-signal/action.yaml  --
+action:
+  title: test signal forwarding
+
+runtime:
+  type: container
+  image: alpine:latest
+  command:
+    - sh
+    - /action/main.sh
+    
+-- actions/test-signal/main.sh --
+#!/bin/sh
+
+trap 'echo "Received signal: SIGINT"; exit 42' INT
+echo "Waiting for signals..."
+sleep 3

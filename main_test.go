@@ -1,7 +1,6 @@
 package launchr
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/rogpeppe/go-internal/testscript"
@@ -11,7 +10,10 @@ import (
 
 func TestMain(m *testing.M) {
 	testscript.Main(m, map[string]func(){
-		"launchr": RunAndExit,
+		"launchr": func() {
+			// Set testscript version.
+			RunAndExit()
+		},
 		"testapp": func() {
 			// Set global application name.
 			name = "testapp"
@@ -22,12 +24,6 @@ func TestMain(m *testing.M) {
 
 // TestScriptBuild tests how binary builds and outputs version.
 func TestScriptBuild(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode")
-	}
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping test on Windows")
-	}
 	testscript.Run(t, testscript.Params{
 		Dir:                 "test/testdata/build",
 		RequireExplicitExec: true,
@@ -44,46 +40,34 @@ func TestScriptBuild(t *testing.T) {
 	})
 }
 
-func TestScriptCommon(t *testing.T) {
+func TestScriptAll(t *testing.T) {
 	t.Parallel()
-	testscript.Run(t, testscript.Params{
-		Dir:                 "test/testdata/common",
-		RequireExplicitExec: true,
-		RequireUniqueNames:  true,
-		ContinueOnError:     true,
-		Cmds:                coretest.TestScriptCmds,
-	})
-}
-
-func TestScriptInput(t *testing.T) {
-	t.Parallel()
-	testscript.Run(t, testscript.Params{
-		Dir:                 "test/testdata/input",
-		RequireExplicitExec: true,
-		RequireUniqueNames:  true,
-		ContinueOnError:     true,
-		Cmds:                coretest.TestScriptCmds,
-	})
-}
-
-func TestScriptRuntimeDocker(t *testing.T) {
-	t.Parallel()
-	testscript.Run(t, testscript.Params{
-		Dir:                 "test/testdata/runtime/docker",
-		RequireExplicitExec: true,
-		RequireUniqueNames:  true,
-		ContinueOnError:     true,
-		Cmds:                coretest.TestScriptCmds,
-	})
-}
-
-func TestScriptRuntimeShell(t *testing.T) {
-	t.Parallel()
-	testscript.Run(t, testscript.Params{
-		Dir:                 "test/testdata/runtime/shell",
-		RequireExplicitExec: true,
-		RequireUniqueNames:  true,
-		ContinueOnError:     true,
-		Cmds:                coretest.TestScriptCmds,
-	})
+	type testcase struct {
+		name      string
+		dir       string
+		skipShort bool
+	}
+	testcases := []testcase{
+		{name: "common", dir: "test/testdata/common"},
+		{name: "action/discovery", dir: "test/testdata/action/discovery"},
+		{name: "action/input", dir: "test/testdata/action/input"},
+		{name: "runtime/container", dir: "test/testdata/runtime/container", skipShort: true},
+		{name: "runtime/shell", dir: "test/testdata/runtime/shell"},
+	}
+	for _, tt := range testcases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skipShort && testing.Short() {
+				t.Skip()
+			}
+			t.Parallel()
+			testscript.Run(t, testscript.Params{
+				Dir:                 tt.dir,
+				RequireExplicitExec: true,
+				RequireUniqueNames:  true,
+				ContinueOnError:     true,
+				Cmds:                coretest.TestScriptCmds,
+			})
+		})
+	}
 }

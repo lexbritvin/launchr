@@ -1,0 +1,55 @@
+# TODO Test shell runtime
+# TODO: Test signals
+# TODO: Test custom env and env passthough.
+# TODO: Test passing log format in subactions
+# TODO: Test other actions work
+# TODO: Add Windows support
+# TODO: Test stderr
+
+chmod 777 actions/test-shell/main.sh
+exec launchr test-shell
+
+-- actions/test-shell/action.yaml --
+action:
+  title: shell action
+  options:
+    - name: firstoption
+      title: First option
+      type: string
+      default: ""
+    - name: secondoption
+      title: Second option
+      description: Option to do something
+      type: boolean
+      default: false
+
+runtime:
+  type: shell
+  env:
+    MY_ENV_VAR: "my_env_var"
+  script: |
+    pwd
+    echo "Current bin path: {{ .current_bin }}"
+    echo "Version:"
+    {{ .current_bin }} --version
+    echo ""
+    echo $${MY_ENV_VAR}
+    {{ .action_dir }}/main.sh "{{ .firstoption }}" "{{ .secondoption }}"
+    echo "Finish"
+
+-- actions/test-shell/main.sh --
+#!/bin/sh
+
+echo
+# Print the total count of arguments
+echo "Total number of arguments passed to the script: $#"
+count=1
+for arg in "$@"
+do
+    if [ -z "$arg" ]; then
+        echo "- Argument $count: \"\""
+    else
+        echo "- Argument $count: $arg"
+    fi
+    count=$((count + 1))
+done

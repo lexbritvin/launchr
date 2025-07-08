@@ -1,0 +1,36 @@
+# TODO: Test long code then
+
+# Testscript doesn't support tty on Windows.
+[windows] skip 'Testing TTY is not supported on Windows'
+
+ttyin -stdin tty.echo
+exec launchr test-tty
+stdout '^\/host \$.*TEST_VAR=bar\s*$'
+stdout '^\/host \$ echo "foo \$\{TEST_VAR\}"\s*$'
+stdout '^foo bar\s*$'
+! stderr .
+
+ttyin -stdin tty.exit
+! exec launchr test-tty
+stdout '^output to stderr\s*$'
+stdout 'action "test-tty" finished with exit code 42'
+! stderr .
+
+-- actions/test-tty/action.yaml --
+action:
+  title: remote
+  description: Test tty
+
+runtime:
+  type: container
+  image: alpine:latest
+  command:
+    - /bin/sh
+
+-- ./tty.echo --
+TEST_VAR=bar
+echo "foo ${TEST_VAR}"
+
+-- ./tty.exit --
+echo "output to stderr" >&2
+exit 42

@@ -1,13 +1,15 @@
 # Test custom working directory and remote context
 mkdir remote-wd
 cp dummydata/host.txt remote-wd/host.txt
+exec launchr test-remote
 exec launchr test-remote &
-sleep 0.2s
+sleep 0.5s
 cp dummydata/host2.txt remote-wd/host2.txt
 wait
 stdout '^hello from host$'
 stdout '^hello from 2nd host$'
 exists remote-wd/container.txt
+! exists remote-wd/host2.txt
 grep '^hello from container$' remote-wd/container.txt
 ! stderr .
 rm remote-wd
@@ -15,12 +17,13 @@ rm remote-wd
 mkdir remote-wd
 cp dummydata/host.txt remote-wd/host.txt
 exec launchr test-remote --remote-runtime &
-sleep 0.2s
+sleep 0.5s
 cp dummydata/host2.txt remote-wd/host2.txt
 wait
 stdout 'Running in the remote environment'
 stdout '^hello from host$'
 stdout 'no file host2.txt'
+exists remote-wd/host2.txt
 ! exists remote-wd/container.txt
 ! stderr .
 rm remote-wd
@@ -28,17 +31,33 @@ rm remote-wd
 mkdir remote-wd
 cp dummydata/host.txt remote-wd/host.txt
 exec launchr test-remote --remote-runtime --remote-copy-back &
-sleep 0.2s
+sleep 0.5s
 cp dummydata/host2.txt remote-wd/host2.txt
 wait
 stdout 'Running in the remote environment'
 stdout '"--remote-copy-back" is set'
 stdout '^hello from host$'
 stdout 'no file host2.txt'
+# TODO: Fix this case, copy back should delete the file inside the container and synchronize back to host.
+#! exists remote-wd/host2.txt
 exists remote-wd/container.txt
 grep '^hello from container$' remote-wd/container.txt
 ! stderr .
 rm remote-wd
+
+# Test embed action.
+exec launchr test-embed-fs:container
+stdout '^action ls: action\.yaml container\.txt main\.sh$'
+stdout '^host ls: actions container\.txt dummydata$'
+grep '^hello host from container$' ./container.txt
+! stderr .
+rm ./container.txt
+
+exec launchr test-embed-fs:container --remote-runtime
+stdout '^action ls: action\.yaml container\.txt main\.sh$'
+stdout '^host ls: actions container\.txt dummydata$'
+! exists ./container.txt
+! stderr .
 
 -- actions/test-remote/action.yaml --
 working_directory: ./remote-wd
@@ -56,7 +75,9 @@ runtime:
 -- actions/test-remote/main.sh --
 #!/bin/sh
 cat ./host.txt
+echo "wait host" && sleep 0.5s
 cat ./host2.txt 2>/dev/null || echo "no file host2.txt"
+rm -f ./host2.txt
 echo "hello from container" > ./container.txt
 
 -- ./dummydata/host.txt --
