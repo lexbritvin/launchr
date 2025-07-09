@@ -66,7 +66,7 @@ func (p *Plugin) Generate(config launchr.GenerateConfig) error {
 func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 	a := action.NewFromYAML("genaction:example", ActionYaml)
 	a.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
-		launchr.Term().Println("hello world")
+		launchr.Term().Println(helloWorldStr())
 		return nil
 	}))
 

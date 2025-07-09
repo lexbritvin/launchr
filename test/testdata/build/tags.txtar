@@ -1,0 +1,19 @@
+
+# Build environment, reuse real home for caching.
+env HOME=$REAL_HOME
+
+env APP_NAME=launchr
+# Local plugin: test plugin with version and replacement
+env APP_PLUGIN_LOCAL=example.com/genaction@v1.1.1
+env APP_PLUGIN_LOCAL_PATH=$REPO_PATH/test/plugins/genaction
+
+exec launchr build --tag customtag -r $CORE_PKG=$REPO_PATH -p $APP_PLUGIN_LOCAL -r $APP_PLUGIN_LOCAL=$APP_PLUGIN_LOCAL_PATH
+! stderr .
+exists ./launchr
+
+# Execute the generated action from the plugin
+exec ./launchr genaction:example
+
+# Verify the action produces expected output
+stdout '^hello world built with custom tag$'
+! stderr .

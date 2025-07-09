@@ -1,7 +1,6 @@
 # =============================================================================
 # Test Script: Binary Building and Version Verification
 # =============================================================================
-# DO NOT USE IT AS A REFERENCE!
 # This is a special test case where we build the bin from the source.
 # See other files for examples.
 #
@@ -13,17 +12,14 @@
 # 5. Generated action functionality
 # =============================================================================
 
-[short] skip 'skipping test in short mode'
-[windows] skip 'skipping test on Windows'
-
 # =============================================================================
 # SETUP: Base Environment Variables
 # =============================================================================
 
 # Application metadata
-env APP_NAME=myapp
-env APP_VERSION='v1.1.0-testscript'
-env APP_BUILT_WITH='testscript v1.0.0'
+env APP_NAME=testapp
+env APP_VERSION='v0.0.0-testscript'
+env APP_BUILT_WITH='testscript v0.0.0'
 
 # Regex patterns for validation
 env ARCH_RGX=[a-z0-9]+/[a-z0-9]+
@@ -31,22 +27,15 @@ env ARCH_RGX=[a-z0-9]+/[a-z0-9]+
 # Computed version strings
 env APP_VERSION_SHORT=$APP_NAME' version '${APP_VERSION@R}' '$ARCH_RGX
 
-# Build environment
-env HOME=$TMPDIR
+# Build environment, reuse real home for caching.
+env HOME=$REAL_HOME
 
 # =============================================================================
 # TEST 1: Basic Binary Build and Version Check
 # =============================================================================
-# Purpose: Build a binary with ldflags and verify version output format
 
-# Configure build flags with version information
-env APP_LDFLAGS=-X' '"$CORE_PKG.name=$APP_NAME"' -X '"$CORE_PKG.version=$APP_VERSION"' -X '"$CORE_PKG.builtWith=$APP_BUILT_WITH"
-
-# Build the binary with version ldflags
-exec go build -C $REPO_PATH -ldflags $APP_LDFLAGS -o $WORK/$APP_NAME ./cmd/launchr
-
-# Verify version output matches expected format: "appname version X.Y.Z arch"
-exec ./$APP_NAME --version
+# Verify version output matches expected format: "testapp version X.Y.Z arch"
+exec testapp --version
 stdout ^$APP_VERSION_SHORT'\nBuilt with '${APP_BUILT_WITH@R}\z$
 ! stderr .
 
@@ -65,7 +54,10 @@ env APP_VERSION_CORE='Core version: v.*\nCore replace: '${CORE_PKG@R}' v.* => '$
 env APP_VERSION_FULL=$APP_NAME_2' version '$APP_VERSION_2' '$ARCH_RGX'\nBuilt with '${APP_VERSION_SHORT}'\n'$APP_VERSION_CORE
 
 # Build new binary with core replacement using the first binary
-exec ./$APP_NAME build --no-cache --tag nethttpomithttp2 -n $APP_NAME_2 -o $APP_NAME_2 -r $CORE_PKG=$REPO_PATH --build-version $APP_VERSION_2
+! exists $APP_NAME_2
+exec testapp build -n $APP_NAME_2 -o $APP_NAME_2 -r $CORE_PKG=$REPO_PATH --build-version $APP_VERSION_2
+! stderr .
+exists $APP_NAME_2
 
 # Verify the full version output includes core replacement information
 exec ./$APP_NAME_2 --version
@@ -78,42 +70,13 @@ stdout ^$APP_VERSION_FULL'\z$'
 # Purpose: Verify that invalid application names are rejected
 
 # Attempt to build with invalid name (contains underscore)
-! exec ./$APP_NAME build -n under_score -o under_score --build-version invalid
+! exists under_score
+! exec testapp build --name under_score --output under_score --build-version invalid
 
 # Verify appropriate error message is displayed
 stdout 'invalid application name "under_score"'
-
-# =============================================================================
-# TEST 4: Plugin Integration and Version Reporting
-# =============================================================================
-# Purpose: Build binary with plugins and verify plugin information in version output
-
-# Plugin configuration
-# External plugin: public repository (may have build issues but acceptable for testing)
-env APP_PLUGIN_EXTERNAL=golang.org/x/term
-
-# Local plugin: test plugin with version and replacement
-env APP_PLUGIN_LOCAL=example.com/genaction@v1.1.1
-env APP_PLUGIN_LOCAL_PATH=$REPO_PATH/test/plugins/genaction
-
-# Build binary with both external and local plugins
-exec ./$APP_NAME build -n $APP_NAME_2 -o $APP_NAME_2 -r $CORE_PKG=$REPO_PATH -p $APP_PLUGIN_EXTERNAL -p $APP_PLUGIN_LOCAL -r $APP_PLUGIN_LOCAL=$APP_PLUGIN_LOCAL_PATH --build-version $APP_VERSION_2
-
-# Verify version output includes plugin information
-exec ./$APP_NAME_2 --version
-stdout ^$APP_VERSION_FULL'\nPlugins:\n  - example\.com/genaction v1\.1\.1\n  - example\.com/genaction v1\.1\.1 => '$REPO_PATH'/test/plugins/genaction \(devel\)\n\z$'
 ! stderr .
-
-# =============================================================================
-# TEST 5: Generated Action Functionality
-# =============================================================================
-# Purpose: Verify that the generated action from plugins works correctly
-
-# Execute the generated action from the plugin
-exec ./$APP_NAME_2 genaction:example
-
-# Verify the action produces expected output
-stdout 'hello world'
+! exists under_score
 
 # =============================================================================
 # End of Tests

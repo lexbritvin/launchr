@@ -1,0 +1,52 @@
+# Build environment, reuse real home for caching.
+env HOME=$REAL_HOME
+exec launchr build --debug -r $CORE_PKG=$REPO_PATH
+stdout 'Debug flag is set.*: .*/launchr/build_\d+'
+! stderr .
+
+exec sh check_build_dir.sh
+stdout '^All expected files are present$'
+
+-- check_build_dir.sh --
+#!/bin/sh
+set -eu
+
+BASE_DIR="$TMPDIR/launchr"
+
+if [ ! -d "$BASE_DIR" ]; then
+    echo "Error: Directory $BASE_DIR does not exist."
+    exit 1
+fi
+
+# Find all matching build_* directories
+build_dir_count=0
+build_dir=""
+for dir in "$BASE_DIR"/build_*; do
+    if [ -d "$dir" ]; then
+        build_dir_count=$((build_dir_count + 1))
+        build_dir="$dir"
+    fi
+done
+
+if [ "$build_dir_count" -eq 0 ]; then
+    echo "Error: No build_* directory found in $BASE_DIR"
+    exit 1
+elif [ "$build_dir_count" -gt 1 ]; then
+    echo "Error: Multiple build_* directories found"
+    exit 1
+fi
+
+echo "Found build directory: $build_dir"
+cd "$build_dir" || exit 1
+
+# List of expected files
+for file in "main.go" "gen.go" "plugins.go" "go.mod" "go.sum"; do
+    if [ ! -e "$file" ]; then
+        echo "Missing expected file: $file"
+        exit 1
+    else
+        echo "Found expected file: $file"
+    fi
+done
+
+echo "All expected files are present"

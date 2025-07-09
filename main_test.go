@@ -1,6 +1,8 @@
 package launchr
 
 import (
+	"os"
+	"runtime"
 	"testing"
 
 	"github.com/rogpeppe/go-internal/testscript"
@@ -9,11 +11,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	// Set testscript version.
+	version = "v0.0.0-testscript"
+	builtWith = "testscript v0.0.0"
 	testscript.Main(m, map[string]func(){
-		"launchr": func() {
-			// Set testscript version.
-			RunAndExit()
-		},
+		"launchr": RunAndExit,
 		"testapp": func() {
 			// Set global application name.
 			name = "testapp"
@@ -24,16 +26,28 @@ func TestMain(m *testing.M) {
 
 // TestScriptBuild tests how binary builds and outputs version.
 func TestScriptBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping test on Windows")
+	}
+	t.Parallel()
 	testscript.Run(t, testscript.Params{
 		Dir:                 "test/testdata/build",
 		RequireExplicitExec: true,
 		RequireUniqueNames:  true,
 		Setup: func(env *testscript.Env) error {
 			repoPath := MustAbs("./")
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
 			env.Vars = append(
 				env.Vars,
 				"REPO_PATH="+repoPath,
 				"CORE_PKG="+PkgPath,
+				"REAL_HOME="+home,
 			)
 			return nil
 		},

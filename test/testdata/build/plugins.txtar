@@ -1,0 +1,59 @@
+
+# =============================================================================
+# SETUP: Base Environment Variables
+# =============================================================================
+
+# Application metadata
+env APP_NAME=launchr
+env APP_VERSION='v0.0.0-testscript'
+env APP_BUILT_WITH='testscript v0.0.0'
+
+# Regex patterns for validation
+env ARCH_RGX=[a-z0-9]+/[a-z0-9]+
+
+# Computed version strings
+env APP_VERSION_SHORT=$APP_NAME' version '${APP_VERSION@R}' '$ARCH_RGX
+
+# Build environment, reuse real home for caching.
+env HOME=$REAL_HOME
+
+# Expected version strings for the new binary
+env APP_VERSION_CORE='Core version: v.*\nCore replace: '${CORE_PKG@R}' v.* => '${REPO_PATH@R}' \(devel\)'
+env APP_VERSION_FULL='launchr version dev '$ARCH_RGX'\nBuilt with '${APP_VERSION_SHORT}'\n'$APP_VERSION_CORE
+
+
+# =============================================================================
+# TEST 4: Plugin Integration and Version Reporting
+# =============================================================================
+# Purpose: Build binary with plugins and verify plugin information in version output
+
+# Plugin configuration
+# External plugin: public repository (may have build issues but acceptable for testing)
+env APP_PLUGIN_EXTERNAL=golang.org/x/example/hello/reverse@master
+
+# Local plugin: test plugin with version and replacement
+env APP_PLUGIN_LOCAL=example.com/genaction@v1.1.1
+env APP_PLUGIN_LOCAL_PATH=$REPO_PATH/test/plugins/genaction
+
+# Build binary with both external and local plugins
+! exists $APP_NAME
+exec launchr build -r $CORE_PKG=$REPO_PATH -p $APP_PLUGIN_EXTERNAL -p $APP_PLUGIN_LOCAL -r $APP_PLUGIN_LOCAL=$APP_PLUGIN_LOCAL_PATH
+! stderr .
+exists $APP_NAME
+
+# Verify version output includes plugin information
+exec ./$APP_NAME --version
+stdout ^$APP_VERSION_FULL'\nPlugins:\n  - example\.com/genaction v1\.1\.1\n  - example\.com/genaction v1\.1\.1 => '$REPO_PATH'/test/plugins/genaction \(devel\)\n\z$'
+! stderr .
+
+# =============================================================================
+# TEST 5: Generated Action Functionality
+# =============================================================================
+# Purpose: Verify that the generated action from plugins works correctly
+
+# Execute the generated action from the plugin
+exec ./$APP_NAME genaction:example
+
+# Verify the action produces expected output
+stdout 'hello world'
+! stderr .

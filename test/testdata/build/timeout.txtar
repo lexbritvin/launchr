@@ -1,0 +1,6 @@
+# Build environment, reuse real home for caching.
+env HOME=$REAL_HOME
+
+! exec launchr build --timeout 1s
+stdout 'build timed out after 1s'
+! stderr .

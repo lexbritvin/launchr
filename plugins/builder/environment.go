@@ -3,6 +3,7 @@ package builder
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,15 +58,14 @@ type buildEnvironment struct {
 	action.WithLogger
 	action.WithTerm
 
-	wd      string
-	env     envVars
-	streams launchr.Streams
+	wd  string
+	env envVars
 }
 
-func newBuildEnvironment(streams launchr.Streams, debug bool) (*buildEnvironment, error) {
+func newBuildEnvironment(b *Builder) (*buildEnvironment, error) {
 	var err error
 	var tmpDir string
-	if !debug {
+	if !b.Debug {
 		tmpDir, err = launchr.MkdirTempWithCleanup("build_")
 	} else {
 		tmpDir, err = launchr.MkdirTemp("build_")
@@ -78,12 +78,13 @@ func newBuildEnvironment(streams launchr.Streams, debug bool) (*buildEnvironment
 		return nil, err
 	}
 
-	env := envFromOs()
-	return &buildEnvironment{
-		wd:      tmpDir,
-		env:     env,
-		streams: streams,
-	}, nil
+	env := &buildEnvironment{
+		wd:  tmpDir,
+		env: envFromOs(),
+	}
+	env.SetLogger(b.Log())
+	env.SetTerm(b.Term())
+	return env, nil
 }
 
 func (env *buildEnvironment) CreateModFile(ctx context.Context, opts *BuildOptions) error {
@@ -145,18 +146,28 @@ func (env *buildEnvironment) NewCommand(ctx context.Context, command string, arg
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = env.wd
 	cmd.Env = env.env
-	cmd.Stdout = env.streams.Out()
-	cmd.Stderr = env.streams.Err()
+	cmd.Stdout = env.Term()
+	cmd.Stderr = env.Term()
 	return cmd
 }
 
 func (env *buildEnvironment) execGoMod(ctx context.Context, args ...string) error {
 	cmd := env.NewCommand(ctx, env.Go(), append([]string{"mod"}, args...)...)
+	// Don't output go output unless some verbosity is requested.
+	if env.Log().Level() != launchr.LogLevelDebug {
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+	}
 	return env.RunCmd(ctx, cmd)
 }
 
 func (env *buildEnvironment) execGoGet(ctx context.Context, args ...string) error {
 	cmd := env.NewCommand(ctx, env.Go(), append([]string{"get"}, args...)...)
+	// Don't output go output unless some verbosity is requested.
+	if env.Log().Level() == launchr.LogLevelDisabled {
+		cmd.Stdout = io.Discard
+		cmd.Stderr = io.Discard
+	}
 	return env.RunCmd(ctx, cmd)
 }
 

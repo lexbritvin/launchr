@@ -1,0 +1,19 @@
+# Build environment, reuse real home for caching.
+env HOME=$REAL_HOME
+env PLUGIN_REPO=golang.org/x/example/hello
+
+# This should build fine because we use go proxy magic and cache
+exec launchr build -v -r $CORE_PKG=$REPO_PATH -p ${PLUGIN_REPO}/reverse
+! stderr .
+
+# Test that it builds well if --no-cache specified
+# and pseudo-version is given that activates some "go get" magic.
+exec launchr build --no-cache -v -r $CORE_PKG=$REPO_PATH -p ${PLUGIN_REPO}/reverse@master
+stdout '^go: added '${PLUGIN_REPO@R}' v0\.0\.0-\d+-.+$'
+! stderr .
+
+# This will not work because we try to download the module directly from source,
+# but it's a submodule and there is no go proxy magic to determine a version and submodules.
+! exec launchr build -v --no-cache -r $CORE_PKG=$REPO_PATH -p ${PLUGIN_REPO}/reverse
+stdout '^go: '${PLUGIN_REPO}'/reverse: no matching versions for query "upgrade"$'
+! stderr .
