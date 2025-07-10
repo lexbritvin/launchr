@@ -99,7 +99,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: [ client-ssh-key ]
     continue-on-error: ${{ matrix.continue-on-error || false }}
-    # TODO: Have different working-directory per runner to be on different paths on linux-sidecar.
+    # Have different working-directory per runner to be on different paths on linux-sidecar.
     defaults:
       run:
         shell: bash

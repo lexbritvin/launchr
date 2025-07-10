@@ -3,11 +3,11 @@ package launchr
 import (
 	"os"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/rogpeppe/go-internal/testscript"
-	"k8s.io/utils/strings/slices"
 
 	coretest "github.com/launchrctl/launchr/test"
 )
@@ -35,6 +35,7 @@ func TestScriptAll(t *testing.T) {
 		setup     []tsSetupfn
 		skipShort bool
 		skipOS    []string
+		timeout   time.Duration
 	}
 	testcases := []testcase{
 		{
@@ -43,6 +44,7 @@ func TestScriptAll(t *testing.T) {
 			setup:     []tsSetupfn{setupBuildEnv},
 			skipShort: true,
 			skipOS:    []string{"windows"},
+			timeout:   30 * time.Second, // Download of dependencies may take time, but normally it takes 20s.
 		},
 		{name: "common", dir: "test/testdata/common"},
 		{name: "action/discovery", dir: "test/testdata/action/discovery"},
@@ -54,6 +56,7 @@ func TestScriptAll(t *testing.T) {
 			dir:       "test/testdata/runtime/container",
 			setup:     []tsSetupfn{coretest.SetupDockerEnv},
 			skipShort: true,
+			timeout:   60 * time.Second, // Download and build of images may take time on cold run.
 		},
 	}
 	for _, tt := range testcases {
@@ -66,10 +69,14 @@ func TestScriptAll(t *testing.T) {
 				t.Skip("skipping test on " + runtime.GOOS)
 			}
 			t.Parallel()
+			if tt.timeout == 0 {
+				// Normally tests must finish fast.
+				tt.timeout = 10 * time.Second
+			}
 			testscript.Run(t, testscript.Params{
 				Dir:      tt.dir,
 				Cmds:     coretest.TestScriptCmds,
-				Deadline: time.Now().Add(30 * time.Second),
+				Deadline: time.Now().Add(tt.timeout),
 
 				RequireExplicitExec: true,
 				RequireUniqueNames:  true,

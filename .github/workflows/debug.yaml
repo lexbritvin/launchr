@@ -151,7 +151,7 @@ jobs:
           echo "🔧 Setting up debugging environment..."
           
           if [[ "${{ runner.os }}" == "Windows" && "${{ runner.arch }}" == "ARM64" ]]; then
-            echo "⚠️  WARNING: Delve debugger is not available on Windows ARM64"
+            echo "⚠️ WARNING: Delve debugger is not available on Windows ARM64"
             echo "🚫 Remote debugging features will be limited on this platform"
           else
             echo "📦 Installing Delve debugger..."
@@ -193,7 +193,7 @@ jobs:
             
             \033[1;36m┌─ 🔄 PORT FORWARDING SETUP\033[0m
             \033[1;36m│\033[0m   \033[1mFor Delve debugging, forward port 2345:\033[0m
-            \033[1;36m│\033[0m   \033[1;33mssh -L 2345:localhost:2345 [your-connection-command]\033[0m
+            \033[1;36m│\033[0m   \033[1;33mssh -L 2345:localhost:2345 ${{ steps.ssh-session.outputs.ssh-command.slice(4) }}\033[0m
             \033[1;36m└─\033[0m
             
             \033[1;32m┌─ 🧪 TESTING COMMANDS\033[0m
