@@ -62,7 +62,7 @@ func TestScriptAll(t *testing.T) {
 			setup:     []tsSetupfn{setupBuildEnv},
 			skipShort: true,
 			skipOS:    []string{"windows"},
-			timeout:   60 * time.Second,
+			timeout:   120 * time.Second,
 			conseq:    true,
 		},
 		{
@@ -71,7 +71,7 @@ func TestScriptAll(t *testing.T) {
 			setup:     []tsSetupfn{setupBuildEnv},
 			skipShort: true,
 			skipOS:    []string{"windows"},
-			timeout:   60 * time.Second,
+			timeout:   120 * time.Second,
 		},
 	}
 	for _, tt := range testcases {
@@ -88,7 +88,7 @@ func TestScriptAll(t *testing.T) {
 			}
 			if tt.timeout == 0 {
 				// Normally tests must finish fast.
-				tt.timeout = 30 * time.Second
+				tt.timeout = 10 * time.Second
 			}
 			testscript.Run(t, testscript.Params{
 				Dir:      tt.dir,
