@@ -32,20 +32,13 @@ func TestScriptAll(t *testing.T) {
 	type testcase struct {
 		name      string
 		dir       string
+		files     []string
 		setup     []tsSetupfn
 		skipShort bool
 		skipOS    []string
 		timeout   time.Duration
 	}
 	testcases := []testcase{
-		{
-			name:      "build",
-			dir:       "test/testdata/build",
-			setup:     []tsSetupfn{setupBuildEnv},
-			skipShort: true,
-			skipOS:    []string{"windows"},
-			timeout:   30 * time.Second, // Download of dependencies may take time, but normally it takes 20s.
-		},
 		{name: "common", dir: "test/testdata/common"},
 		{name: "action/discovery", dir: "test/testdata/action/discovery"},
 		{name: "action/input", dir: "test/testdata/action/input"},
@@ -56,7 +49,20 @@ func TestScriptAll(t *testing.T) {
 			dir:       "test/testdata/runtime/container",
 			setup:     []tsSetupfn{coretest.SetupDockerEnv},
 			skipShort: true,
-			timeout:   60 * time.Second, // Download and build of images may take time on cold run.
+			timeout:   30 * time.Second, // Download and build of images may take time on cold run.
+		},
+		// Build is a very heavy test, run it the last.
+		// If it fails for you after timeout, try to warm up the build cache.
+		// Build the binary, run `make build`.
+		{
+			name:      "build",
+			dir:       "test/testdata/build",
+			setup:     []tsSetupfn{setupBuildEnv},
+			skipShort: true,
+			skipOS:    []string{"windows"},
+			// If it fails for you after timeout, try to warm up the build cache.
+			// Build the binary, run `make`.
+			timeout: 60 * time.Second,
 		},
 	}
 	for _, tt := range testcases {

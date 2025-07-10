@@ -145,6 +145,9 @@ jobs:
           mkdir -p $GOTMPDIR
           echo "📁 Using temp directory: $GOTMPDIR"
           
+          echo "Make sure the binary can be built, warm up build cache..."
+          make build
+          
           echo "🔍 Running tests..."
           go test ./...
           
