@@ -8,6 +8,7 @@
 #   • 🌍 Multi-platform support (Linux, macOS, Windows)
 #   • 🔄 Port forwarding for seamless debug sessions
 #   • 🐳 Docker sidecar for enhanced compatibility
+#   • 📁 Persistent Go environment configuration
 
 name: 🚧 Debug with SSH
 
@@ -149,14 +150,21 @@ jobs:
         shell: bash
         run: |
           echo "🔧 Setting up debugging environment..."
-          echo "$PATH"
-          go env GOPATH
 
+          echo "📁 Configure Go temporary directory"
           export GOTMPDIR="$(pwd)/.gotmp"
           mkdir -p $GOTMPDIR
           echo "📁 Using temp directory: $GOTMPDIR"
           echo "GOTMPDIR=$GOTMPDIR" >> $GITHUB_ENV
-          # TODO: Configure go path on macos /Users/runner/hostedtoolcache/go/1.24.4/arm64/bin/go
+
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "🍎 Configuring Go binary path for macOS..."
+            mkdir -p /Users/runner/.local/bin
+            ln -s $(which go) /Users/runner/.local/bin/go
+            echo "✅ Go binary linked to user path"
+          fi
+          
+          # Check Windows ARM64 compatibility
           if [[ "${{ runner.os }}" == "Windows" && "${{ runner.arch }}" == "ARM64" ]]; then
             echo "⚠️ WARNING: Delve debugger is not available on Windows ARM64"
             echo "🚫 Remote debugging features will be limited on this platform"
@@ -170,33 +178,27 @@ jobs:
           go mod download
           echo "✅ Dependencies ready!"
 
-      - name: Save Go environment variables
+      - name: 💾 Save Go environment variables
         shell: bash
         run: |
+          echo "💾 Persisting Go environment configuration..."
           echo "📋 Saving: GOTMPDIR=${GOTMPDIR}"
           
           case "$RUNNER_OS" in
             "Linux"|"macOS")
-              # Remove existing entries
-              if [[ "$RUNNER_OS" == "macOS" ]]; then
-                sudo sed -i '' '/export GOTMPDIR/d' /etc/profile 2>/dev/null || true
-              else
-                sudo sed -i '/export GOTMPDIR/d' /etc/profile 2>/dev/null || true
-              fi
-          
-              # Add Go environment variables
+              echo "🐧🍎 Configuring Unix-like environment..."
+              # Add Go environment variables to system profile
               echo "export GOTMPDIR=\"${GOTMPDIR}\"" | sudo tee -a /etc/profile
-
-              echo "✅ Saved to /etc/profile"
-              echo "To use: source /etc/profile"
+              echo "✅ Environment saved to /etc/profile"
+              echo "💡 To use: source /etc/profile"
               ;;
           
             "Windows")
-              # Set system environment variables
+              echo "🪟 Configuring Windows environment..."
+              # 🔧 Set system environment variables
               setx GOTMPDIR "${GOTMPDIR}" //M 2>/dev/null
-
-              echo "✅ Saved to Windows system environment"
-              echo "To use: Open new terminal session"
+              echo "✅ Environment saved to Windows system variables"
+              echo "💡 To use: Open new terminal session"
               ;;
           
             *)

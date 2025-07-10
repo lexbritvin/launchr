@@ -34,7 +34,6 @@ type dockerRuntime struct {
 
 // NewDockerRuntime creates a docker runtime.
 func NewDockerRuntime() (ContainerRunner, error) {
-	// @todo it doesn't work with Colima or with non-default context.
 	c, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
 	if err != nil {

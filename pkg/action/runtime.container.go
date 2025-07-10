@@ -374,13 +374,15 @@ func (c *runtimeContainer) Execute(ctx context.Context, a *Action) (err error) {
 func getCurrentUser() string {
 	curuser := ""
 	// If running in a container native environment, run container as a current user.
-	// @todo review, it won't work with a remote context.
 	switch runtime.GOOS {
 	case "linux", "darwin":
 		u, err := osuser.Current()
 		if err == nil {
 			curuser = u.Uid + ":" + u.Gid
 		}
+	case "windows":
+		// Use neutral 1000 as in WSL.
+		curuser = "1000:1000"
 	}
 	return curuser
 }
@@ -404,7 +406,6 @@ func (c *runtimeContainer) imageRemove(ctx context.Context, a *Action) error {
 }
 
 func (c *runtimeContainer) isRebuildRequired(bi *driver.BuildDefinition) (bool, error) {
-	// @todo test image cache resolution somehow.
 	if c.imgccres == nil || bi == nil || !c.rebuildImage {
 		return false, nil
 	}
@@ -575,7 +576,6 @@ func (c *runtimeContainer) copyAllToContainer(ctx context.Context, cid string, a
 	if !c.isRemote() {
 		return nil
 	}
-	// @todo test somehow.
 	launchr.Term().Info().Printfln(`Running in the remote environment. Copying the working directory and action directory inside the container.`)
 	// Copy dir to a container to have the same owner in the destination directory.
 	// Copying only the content of the dir will not override the parent dir ownership.
