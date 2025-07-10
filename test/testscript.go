@@ -3,22 +3,45 @@ package test
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/rogpeppe/go-internal/testscript"
 
-	// Include test plugins.
-	_ "github.com/launchrctl/launchr/test/plugins"
+	"github.com/launchrctl/launchr/internal/launchr"
+	_ "github.com/launchrctl/launchr/test/plugins" // Include test plugins.
 )
 
-// TestScriptCmds provides custom commands for testscript execution
-var TestScriptCmds = map[string]func(ts *testscript.TestScript, neg bool, args []string){
-	"txtproc": txtprocCmd,
-	"sleep":   sleepCmd,
-	"dlv":     dlvCmd,
+// CmdsTestScript provides custom commands for testscript execution.
+func CmdsTestScript() map[string]func(ts *testscript.TestScript, neg bool, args []string) {
+	return map[string]func(ts *testscript.TestScript, neg bool, args []string){
+		// txtproc provides flexible text processing capabilities
+		// Usage:
+		//	txtproc replace 'old' 'new' input.txt output.txt
+		//	txtproc replace-regex 'pattern' 'replacement' input.txt output.txt
+		//	txtproc remove-lines 'pattern' input.txt output.txt
+		//	txtproc remove-regex 'pattern' input.txt output.txt
+		//	txtproc extract-lines 'pattern' input.txt output.txt
+		//	txtproc extract-regex 'pattern' input.txt output.txt
+		"txtproc": CmdTxtProc,
+		// sleep pauses execution for a specified duration
+		// Usage:
+		//  sleep <duration>
+		// Examples:
+		//	sleep 1s
+		//	sleep 500ms
+		//	sleep 2m
+		"sleep": CmdSleep,
+		// dlv runs the given binary with Delve for debugging.
+		// Please, note that the test must be run with debug headers for it to work.
+		// Usage:
+		//   dlv <app_name>
+		"dlv": CmdDlv,
+	}
 }
 
-// SetupDockerEnv configures docker backend in the test environment.
-func SetupDockerEnv(env *testscript.Env) error {
+// SetupEnvDocker configures docker backend in the test environment.
+func SetupEnvDocker(env *testscript.Env) error {
 	env.Vars = append(
 		env.Vars,
 		// Passthrough Docker env variables if set.
@@ -27,4 +50,40 @@ func SetupDockerEnv(env *testscript.Env) error {
 		"DOCKER_CERT_PATH="+os.Getenv("DOCKER_CERT_PATH"),
 	)
 	return nil
+}
+
+// SetupEnvRandom sets up a random environment variable.
+func SetupEnvRandom(env *testscript.Env) error {
+	env.Vars = append(
+		env.Vars,
+		"RANDOM="+launchr.GetRandomString(8),
+	)
+	return nil
+}
+
+// CmdSleep pauses execution for a specified duration
+func CmdSleep(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("sleep does not support negation")
+	}
+
+	if len(args) != 1 {
+		ts.Fatalf("sleep: usage: sleep <duration>")
+	}
+
+	duration, err := time.ParseDuration(args[0])
+	if err != nil {
+		// Try parsing as seconds if it's just a number
+		if seconds, numErr := strconv.ParseFloat(args[0], 64); numErr == nil {
+			duration = time.Duration(seconds * float64(time.Second))
+		} else {
+			ts.Fatalf("sleep: invalid duration %q: %v", args[0], err)
+		}
+	}
+
+	if duration < 0 {
+		ts.Fatalf("sleep: duration cannot be negative")
+	}
+
+	time.Sleep(duration)
 }

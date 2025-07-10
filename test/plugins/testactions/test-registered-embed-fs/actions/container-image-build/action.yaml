@@ -4,7 +4,7 @@ action:
 
 runtime:
   type: container
-  image: my/testimage-embed:latest
+  image: ${IMAGE_REGISTRY}/testimage-embed:latest
   build:
     context: ./
     args:

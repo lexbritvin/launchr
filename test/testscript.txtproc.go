@@ -19,16 +19,8 @@ const (
 	opExtractRegex = "extract-regex"
 )
 
-// txtprocCmd provides flexible text processing capabilities
-// Usage examples:
-//
-//	txtproc replace 'old' 'new' input.txt output.txt
-//	txtproc replace-regex 'pattern' 'replacement' input.txt output.txt
-//	txtproc remove-lines 'pattern' input.txt output.txt
-//	txtproc remove-regex 'pattern' input.txt output.txt
-//	txtproc extract-lines 'pattern' input.txt output.txt
-//	txtproc extract-regex 'pattern' input.txt output.txt
-func txtprocCmd(ts *testscript.TestScript, neg bool, args []string) {
+// CmdTxtProc provides flexible text processing capabilities
+func CmdTxtProc(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
 		ts.Fatalf("txtproc does not support negation")
 	}

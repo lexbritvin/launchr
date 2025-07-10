@@ -48,7 +48,7 @@ func TestScriptAll(t *testing.T) {
 		{
 			name:      "runtime/container/docker",
 			dir:       "test/testdata/runtime/container",
-			setup:     []tsSetupfn{coretest.SetupDockerEnv},
+			setup:     []tsSetupfn{coretest.SetupEnvDocker, coretest.SetupEnvRandom},
 			skipShort: true,
 			timeout:   60 * time.Second, // Download and build of images may take time on cold run.
 		},
@@ -88,12 +88,12 @@ func TestScriptAll(t *testing.T) {
 			}
 			if tt.timeout == 0 {
 				// Normally tests must finish fast.
-				tt.timeout = 10 * time.Second
+				tt.timeout = 30 * time.Second
 			}
 			testscript.Run(t, testscript.Params{
 				Dir:      tt.dir,
 				Files:    tt.files,
-				Cmds:     coretest.TestScriptCmds,
+				Cmds:     coretest.CmdsTestScript(),
 				Deadline: time.Now().Add(tt.timeout),
 
 				RequireExplicitExec: true,

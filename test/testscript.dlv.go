@@ -11,8 +11,8 @@ import (
 	"github.com/launchrctl/launchr/internal/launchr"
 )
 
-// dlvCmd implements a custom testscript command for debugging with Delve
-func dlvCmd(ts *testscript.TestScript, neg bool, args []string) {
+// CmdDlv implements a custom testscript command for debugging with Delve
+func CmdDlv(ts *testscript.TestScript, neg bool, args []string) {
 	if neg {
 		ts.Fatalf("dlv command does not support negation")
 	}

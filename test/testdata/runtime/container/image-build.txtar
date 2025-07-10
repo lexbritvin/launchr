@@ -24,17 +24,24 @@
 # - Validates checksum tracking and cleanup operations
 # =============================================================================
 
+# Prepare random image registry for builds.
+env IMAGE_REGISTRY=$RANDOM
+txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-1/action.yaml actions/testimage-1/action.yaml
+txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-2/action.yaml actions/testimage-2/action.yaml
+txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-3/action.yaml actions/testimage-3/action.yaml
+txtproc replace '[image_placeholder]' $IMAGE_REGISTRY .launchr/config.yaml .launchr/config.yaml
+
 # Test 1: Initial Image Build with Multiple Tags
 # -----------------------------------------------------------------------------
 # Execute action that requires building a new image with multiple tags
 exec launchr testimage-1
 
 # Validate initial build output messages
-stdout '^Image "my/testimage-1:latest" doesn''t exist locally, building...$'
+stdout '^Image "'$IMAGE_REGISTRY'/testimage-1:latest" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
-stdout '^Successfully tagged my/testimage-1:latest$'
-stdout '^Successfully tagged my/testimage-1:bar$'
-stdout '^Successfully tagged my/testimage-1:buz$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:latest$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:bar$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:buz$'
 
 # Validate container execution output (user ID verification)
 stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
@@ -48,11 +55,11 @@ stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 exec launchr testimage-1
 
 # Validate that rebuild messages do NOT appear (image cached)
-! stdout '^Image "my/testimage-1:latest" doesn''t exist locally, building...$'
+! stdout '^Image "'$IMAGE_REGISTRY'/testimage-1:latest" doesn''t exist locally, building...$'
 ! stdout '^Successfully built .+$'
-! stdout '^Successfully tagged my/testimage-1:latest$'
-! stdout '^Successfully tagged my/testimage-1:bar$'
-! stdout '^Successfully tagged my/testimage-1:buz$'
+! stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:latest$'
+! stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:bar$'
+! stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:buz$'
 
 # Validate container execution still works (using cached image)
 stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
@@ -66,11 +73,11 @@ stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 exec launchr testimage-1 --no-cache
 
 # Validate forced rebuild output messages
-stdout '^Image "my/testimage-1:latest" doesn''t exist locally, building...$'
+stdout '^Image "'$IMAGE_REGISTRY'/testimage-1:latest" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
-stdout '^Successfully tagged my/testimage-1:latest$'
-stdout '^Successfully tagged my/testimage-1:bar$'
-stdout '^Successfully tagged my/testimage-1:buz$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:latest$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:bar$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-1:buz$'
 
 # Validate container execution after forced rebuild
 stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
@@ -84,9 +91,9 @@ stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 exec launchr testimage-2 --remove-image
 
 # Validate build and execution output
-stdout '^Image "my/testimage-2:foo" doesn''t exist locally, building...$'
+stdout '^Image "'$IMAGE_REGISTRY'/testimage-2:foo" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
-stdout '^Successfully tagged my/testimage-2:foo$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-2:foo$'
 stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 
 # Validate clean execution
@@ -95,8 +102,8 @@ stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 # Test 5: Verify Image Cleanup Worked
 # -----------------------------------------------------------------------------
 # Verify that image was actually removed after --remove-image execution
-! exec docker image inspect my/testimage-2:foo --format '{{ .Id }}'
-stderr 'No such image: my/testimage-2:foo'
+! exec docker image inspect ${IMAGE_REGISTRY}/testimage-2:foo --format '{{ .Id }}'
+stderr 'No such image: '$IMAGE_REGISTRY'/testimage-2:foo'
 
 # Test 6: Rebuild After Cleanup
 # -----------------------------------------------------------------------------
@@ -104,9 +111,9 @@ stderr 'No such image: my/testimage-2:foo'
 exec launchr testimage-2
 
 # Validate rebuild occurs (image was successfully removed)
-stdout '^Image "my/testimage-2:foo" doesn''t exist locally, building...$'
+stdout '^Image "'$IMAGE_REGISTRY'/testimage-2:foo" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
-stdout '^Successfully tagged my/testimage-2:foo$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-2:foo$'
 stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 
 # Validate clean execution
@@ -118,11 +125,11 @@ stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
 exec launchr testimage-3
 
 # Validate build output with custom configuration
-stdout '^Image "my/testimage-3" doesn''t exist locally, building...$'
+stdout '^Image "'$IMAGE_REGISTRY'/testimage-3" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
-stdout '^Successfully tagged my/testimage-3:latest$'
-stdout '^Successfully tagged my/testimage-3:bar$'
-stdout '^Successfully tagged my/testimage-3:buz$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-3:latest$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-3:bar$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-3:buz$'
 
 # Validate build argument templating (environment variables passed correctly)
 stdout '^MY_ARG_1=foo MY_ARG_2=bar$'
@@ -136,9 +143,9 @@ stdout '^MY_ARG_1=foo MY_ARG_2=bar$'
 exec launchr test-registered-embed-fs:container-image-build
 
 # Validate embedded action build output
-stdout '^Image "my/testimage-embed:latest" doesn''t exist locally, building...$'
+stdout '^Image "'$IMAGE_REGISTRY'/testimage-embed:latest" doesn''t exist locally, building...$'
 stdout '^Successfully built .+$'
-stdout '^Successfully tagged my/testimage-embed:latest$'
+stdout '^Successfully tagged '$IMAGE_REGISTRY'/testimage-embed:latest$'
 
 # Validate container execution from embedded action
 stdout '^uid=\d+\(foobar\) gid=\d+(\(.+\))? groups=\d+(\(.+\))?$'
@@ -156,22 +163,22 @@ grep '^hello host from container$' ./container.txt
 # Test 9: Checksum Tracking Validation
 # -----------------------------------------------------------------------------
 # Verify that all built images are properly tracked in actions.sum file
-grep '^my\/testimage-1:latest h1:' ./.launchr/actions.sum
-grep '^my\/testimage-1:bar h1:' ./.launchr/actions.sum
-grep '^my\/testimage-1:buz h1:' ./.launchr/actions.sum
-grep '^my\/testimage-2:foo h1:' ./.launchr/actions.sum
-grep '^my\/testimage-3 h1:' ./.launchr/actions.sum
-grep '^my\/testimage-3:bar h1:' ./.launchr/actions.sum
-grep '^my\/testimage-3:buz h1:' ./.launchr/actions.sum
-grep '^my\/testimage-embed:latest h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-1:latest h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-1:bar h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-1:buz h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-2:foo h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-3 h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-3:bar h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-3:buz h1:' ./.launchr/actions.sum
+grep '^'$IMAGE_REGISTRY'\/testimage-embed:latest h1:' ./.launchr/actions.sum
 
 # Test Cleanup Phase: Remove Generated Images
 # -----------------------------------------------------------------------------
 # Clean up all generated images to avoid interfering with other tests
-exec docker rmi -f my/testimage-1:latest my/testimage-1:bar my/testimage-1:buz
-exec docker rmi -f my/testimage-2:foo
-exec docker rmi -f my/testimage-3 my/testimage-3:bar my/testimage-3:buz
-exec docker rmi -f my/testimage-embed:latest
+exec docker rmi -f ${IMAGE_REGISTRY}/testimage-1:latest ${IMAGE_REGISTRY}/testimage-1:bar ${IMAGE_REGISTRY}/testimage-1:buz
+exec docker rmi -f ${IMAGE_REGISTRY}/testimage-2:foo
+exec docker rmi -f ${IMAGE_REGISTRY}/testimage-3 ${IMAGE_REGISTRY}/testimage-3:bar ${IMAGE_REGISTRY}/testimage-3:buz
+exec docker rmi -f ${IMAGE_REGISTRY}/testimage-embed:latest
 
 # =============================================================================
 # Test Data Files - Action Configurations and Build Files
@@ -186,7 +193,7 @@ action:
 
 runtime:
   type: container                         # Container execution type
-  image: my/testimage-1:latest            # Primary image name
+  image: [image_placeholder]/testimage-1:latest            # Primary image name
   build:
     context: ./                           # Build context directory
     args:
@@ -194,8 +201,8 @@ runtime:
       GROUP_ID: {{ .current_gid }}        # Template: current group ID
       USER_NAME: foobar                   # Static build argument
     tags:
-      - my/testimage-1:bar                # Additional image tag
-      - my/testimage-1:buz                # Additional image tag
+      - [image_placeholder]/testimage-1:bar                # Additional image tag
+      - [image_placeholder]/testimage-1:buz                # Additional image tag
   command:
     - id                                  # Command to display user info
 
@@ -218,7 +225,7 @@ action:
 
 runtime:
   type: container                         # Container execution type
-  image: my/testimage-2:foo               # Custom image name with tag
+  image: [image_placeholder]/testimage-2:foo               # Custom image name with tag
   build:
     context: ./context                    # Custom build context subdirectory
     buildfile: test.Dockerfile            # Custom Dockerfile name
@@ -248,7 +255,7 @@ action:
 
 runtime:
   type: container                         # Container execution type
-  image: my/testimage-3                   # Image name (config in .launchr/config.yaml)
+  image: [image_placeholder]/testimage-3                   # Image name (config in .launchr/config.yaml)
   command:
     - sh                                  # Shell command execution
     - -c                                  # Execute command string
@@ -258,15 +265,15 @@ runtime:
 -- .launchr/config.yaml --
 # Global configuration file defining image build settings
 images:
-  my/testimage-3:                         # Image name matching action
+  [image_placeholder]/testimage-3:                         # Image name matching action
     context: ./testimage-3                # Build context directory
     buildfile: test1.Dockerfile           # Custom Dockerfile name
     args:
       MY_ARG_1: "foo"                     # Build argument value
       MY_ARG_2: "bar"                     # Build argument value
     tags:
-      - my/testimage-3:bar                # Additional image tag
-      - my/testimage-3:buz                # Additional image tag
+      - [image_placeholder]/testimage-3:bar                # Additional image tag
+      - [image_placeholder]/testimage-3:buz                # Additional image tag
 
 # Global Configuration Dockerfile
 -- .launchr/testimage-3/test1.Dockerfile --
