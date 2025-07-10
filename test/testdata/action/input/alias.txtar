@@ -77,8 +77,6 @@ stdout 'Usage:'
 # =============================================================================
 
 # Action with Multiple Aliases
-# Path: test-print-input/actions/full-name/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/full-name/action.yaml --
 # Plugin action demonstrating alias functionality
 # This action can be executed using its full name or defined aliases

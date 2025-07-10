@@ -47,8 +47,6 @@ stdout '^\s+bar\.baz\.bar-bar:waldo-fred-thud\s+foo$'
 # =============================================================================
 
 # Action Definition File
-# Path: foo/bar/baz/bar/bar_bar/actions/waldo-fred_thud/action.yaml
-# -----------------------------------------------------------------------------
 # This file defines a simple action with:
 # - Title: "foo" (displayed in help output)
 # - Runtime: "plugin" (specifies execution environment)
@@ -58,8 +56,6 @@ action:
 runtime: plugin     # Execution runtime specification
 
 # Launchr Configuration File
-# Path: .launchr/config.yaml
-# -----------------------------------------------------------------------------
 # Configuration file that defines action naming transformation rules:
 # 1. Replace ".bar." with "." to simplify nested namespaces
 # 2. Replace "_" with "-" for consistent kebab-case naming

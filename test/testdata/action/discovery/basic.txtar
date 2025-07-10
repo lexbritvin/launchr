@@ -84,8 +84,6 @@ stdout '^\s+bar\.baz:waldo\s+waldo$'      # Namespaced from custom path
 # =============================================================================
 
 # Standard Container Action
-# Path: actions/foo/action.yaml
-# -----------------------------------------------------------------------------
 -- actions/foo/action.yaml --
 # Container-based action using Alpine Linux
 action:
@@ -96,8 +94,6 @@ runtime:
   command: [/bin/sh, ls]                  # Command to execute
 
 # Standard Shell Action
-# Path: actions/bar/action.yaml
-# -----------------------------------------------------------------------------
 -- actions/bar/action.yaml --
 # Shell script action for file listing
 action:
@@ -107,8 +103,6 @@ runtime:
   script: ls -al                          # Script content to execute
 
 # Valid Special Characters Action
-# Path: foo-bar_baz/actions/waldo-fred.1/action.yaml
-# -----------------------------------------------------------------------------
 -- foo-bar_baz/actions/waldo-fred.1/action.yaml --
 # Action demonstrating valid special character usage in names
 # Valid characters: hyphens, underscores, dots, numbers
@@ -116,24 +110,18 @@ action: { title: valid special chars }    # Compact YAML syntax
 runtime: plugin                           # Plugin-based execution
 
 # Invalid Special Characters Action (Spaces)
-# Path: foo-bar_baz/actions/waldo fred/action.yaml
-# -----------------------------------------------------------------------------
 -- foo-bar_baz/actions/waldo fred/action.yaml --
 # Action with invalid spaces in path - should be filtered out
 action: { title: invalid special chars }
 runtime: plugin
 
 # Invalid Special Characters Action (Root Level)
-# Path: actions/waldo fred/action.yaml
-# -----------------------------------------------------------------------------
 -- actions/waldo fred/action.yaml --
 # Another action with spaces in path - should be filtered out
 action: { title: invalid special chars }
 runtime: plugin
 
 # Namespaced Plugin Action - Waldo
-# Path: foo/bar/baz/actions/waldo/action.yaml
-# -----------------------------------------------------------------------------
 -- foo/bar/baz/actions/waldo/action.yaml --
 # Plugin action in nested namespace structure
 action:
@@ -141,8 +129,6 @@ action:
 runtime: plugin                           # Plugin execution type
 
 # Namespaced Plugin Action - Fred
-# Path: foo/bar/baz/actions/fred/action.yaml
-# -----------------------------------------------------------------------------
 -- foo/bar/baz/actions/fred/action.yaml --
 # Plugin action in nested namespace structure
 action:
@@ -150,8 +136,6 @@ action:
 runtime: plugin                           # Plugin execution type
 
 # Broken Action Configuration
-# Path: foo/bar/baz/actions/broken/action.yaml
-# -----------------------------------------------------------------------------
 -- foo/bar/baz/actions/broken/action.yaml --
 # Intentionally broken action to test error handling
 # Missing required container properties
@@ -162,8 +146,6 @@ runtime:
   # ERROR: Missing required image and command properties
 
 # Hidden Action - Foo (Should be ignored)
-# Path: .hidden/actions/foo/action.yaml
-# -----------------------------------------------------------------------------
 -- .hidden/actions/foo/action.yaml --
 # Action in hidden directory - should not be discovered
 action:
@@ -171,8 +153,6 @@ action:
 runtime: plugin
 
 # Hidden Action - Bar (Should be ignored)
-# Path: .hidden/actions/bar/action.yaml
-# -----------------------------------------------------------------------------
 -- .hidden/actions/bar/action.yaml --
 # Another hidden action - should not be discovered
 action:
@@ -180,8 +160,6 @@ action:
 runtime: plugin
 
 # Incorrectly Placed Action
-# Path: foo/bar/baz/myactions/incorrect/action.yaml
-# -----------------------------------------------------------------------------
 -- foo/bar/baz/myactions/incorrect/action.yaml --
 # Action in non-standard directory name - should not be discovered
 # Actions must be in directories named 'actions', not 'myactions'
@@ -190,8 +168,6 @@ action:
 runtime: plugin
 
 # Subdirectory Action (Invalid Structure)
-# Path: foo/bar/baz/actions/subdir/foo/action.yaml
-# -----------------------------------------------------------------------------
 -- foo/bar/baz/actions/subdir/foo/action.yaml --
 # Action in subdirectory of actions directory - should not be discovered
 # Actions should be directly in actions/ directory, not nested further

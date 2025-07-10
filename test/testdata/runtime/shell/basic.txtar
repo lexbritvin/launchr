@@ -5,6 +5,7 @@
 # TODO: Test other actions work
 # TODO: Add Windows support
 # TODO: Test stderr
+# TODO: Test sensitive in subactions
 
 chmod 777 actions/test-shell/main.sh
 exec launchr test-shell

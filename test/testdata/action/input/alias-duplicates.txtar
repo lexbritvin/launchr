@@ -112,8 +112,6 @@ stdout 'alias "alias2" is already defined by "test-print-input:full-1"'
 # =============================================================================
 
 # First Action with Conflicting Aliases
-# Path: test-print-input/actions/full-1/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/full-1/action.yaml --
 # Plugin action that claims aliases first (wins the conflict)
 # This action should remain functional despite alias conflicts
@@ -138,8 +136,6 @@ action:
       required: true                       # Must be provided by user
 
 # Second Action with Conflicting Aliases
-# Path: test-print-input/actions/full-2/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/full-2/action.yaml --
 # Plugin action that attempts to claim already-used aliases
 # This entire action should be skipped due to alias conflicts

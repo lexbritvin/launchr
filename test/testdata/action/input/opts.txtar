@@ -669,8 +669,6 @@ stdout '^optArray: \[\] \[\]interface {} false$'
 # =============================================================================
 
 # String Option Action
-# Path: test-print-input/actions/opt-string/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-string/action.yaml --
 # Plugin action demonstrating string option handling
 runtime: plugin                           # Plugin execution type
@@ -686,8 +684,6 @@ action:
       default: foo                         # Default value when not provided
 
 # Required String Option Action (No Default)
-# Path: test-print-input/actions/opt-required/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-required/action.yaml --
 # Plugin action demonstrating required string option without default
 runtime: plugin                           # Plugin execution type
@@ -703,8 +699,6 @@ action:
       required: true                       # Must be provided by user
 
 # Required String Option Action (With Default)
-# Path: test-print-input/actions/opt-required-default/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-required-default/action.yaml --
 # Plugin action demonstrating required string option with default
 runtime: plugin                           # Plugin execution type
@@ -721,8 +715,6 @@ action:
       required: true                       # Must be provided by user
 
 # Integer Option Action
-# Path: test-print-input/actions/opt-integer/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-integer/action.yaml --
 # Plugin action demonstrating integer option handling
 runtime: plugin                           # Plugin execution type
@@ -738,8 +730,6 @@ action:
       default: 42                          # Default value when not provided
 
 # Number Option Action
-# Path: test-print-input/actions/opt-number/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-number/action.yaml --
 # Plugin action demonstrating number (float) option handling
 runtime: plugin                           # Plugin execution type
@@ -755,8 +745,6 @@ action:
       default: 37.73                       # Default value when not provided
 
 # Enum Option Action
-# Path: test-print-input/actions/opt-enum/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-enum/action.yaml --
 # Plugin action demonstrating enum option handling
 runtime: plugin                           # Plugin execution type
@@ -773,8 +761,6 @@ action:
       default: 37                          # Default value when not provided
 
 # Enum Option Action with Invalid Default
-# Path: test-print-input/actions/opt-enum-incorrect-default/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-enum-incorrect-default/action.yaml --
 # Plugin action demonstrating enum validation of default values
 runtime: plugin                           # Plugin execution type
@@ -791,8 +777,6 @@ action:
       default: 99                          # Invalid default value (not in enum)
 
 # Boolean Option Action
-# Path: test-print-input/actions/opt-boolean/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-boolean/action.yaml --
 # Plugin action demonstrating boolean option handling
 runtime: plugin                           # Plugin execution type
@@ -808,8 +792,6 @@ action:
       default: true                        # Default value when not provided
 
 # IP Address Option Action
-# Path: test-print-input/actions/opt-ip/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-ip/action.yaml --
 # Plugin action demonstrating formatted string option handling
 runtime: plugin                           # Plugin execution type
@@ -826,8 +808,6 @@ action:
       default: 1.1.1.1                    # Default IP address
 
 # String Array Option Action
-# Path: test-print-input/actions/opt-array-string/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-array-string/action.yaml --
 # Plugin action demonstrating string array option handling
 runtime: plugin                           # Plugin execution type
@@ -844,8 +824,6 @@ action:
       # Note: items type defaults to string for arrays
 
 # Integer Array Option Action
-# Path: test-print-input/actions/opt-array-integer/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-array-integer/action.yaml --
 # Plugin action demonstrating integer array option handling
 runtime: plugin                           # Plugin execution type
@@ -863,8 +841,6 @@ action:
         type: integer                      # Array item type: integer
 
 # Number Array Option Action
-# Path: test-print-input/actions/opt-array-number/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-array-number/action.yaml --
 # Plugin action demonstrating number array option handling
 runtime: plugin                           # Plugin execution type
@@ -882,8 +858,6 @@ action:
         type: number                       # Array item type: number
 
 # Number Array Option Action with Invalid Default
-# Path: test-print-input/actions/opt-array-number-incorrect-default/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-array-number-incorrect-default/action.yaml --
 # Plugin action demonstrating array default value validation
 runtime: plugin                           # Plugin execution type
@@ -901,8 +875,6 @@ action:
         type: number                       # Array item type: number
 
 # Enum Array Option Action
-# Path: test-print-input/actions/opt-array-enum/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-array-enum/action.yaml --
 # Plugin action demonstrating enum array option handling
 runtime: plugin                           # Plugin execution type
@@ -921,8 +893,6 @@ action:
         enum: [37, 73]                     # Allowed values for each array item
 
 # Boolean Array Option Action
-# Path: test-print-input/actions/opt-array-boolean/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opt-array-boolean/action.yaml --
 # Plugin action demonstrating boolean array option handling
 runtime: plugin                           # Plugin execution type
@@ -940,8 +910,6 @@ action:
         type: boolean                      # Array item type: boolean
 
 # Multiple Options Action
-# Path: test-print-input/actions/opts-3/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/opts-3/action.yaml --
 # Plugin action demonstrating multiple option handling
 runtime: plugin                           # Plugin execution type

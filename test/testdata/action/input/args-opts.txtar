@@ -127,8 +127,6 @@ stdout '- \[options optEnum\]: value must be one of ''enum1'', ''enum2'''
 # =============================================================================
 
 # Mixed Arguments and Options Action
-# Path: test-print-input/actions/args-opts/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/args-opts/action.yaml --
 # Plugin action demonstrating mixed arguments and options handling
 # Shows how positional arguments and named options can coexist

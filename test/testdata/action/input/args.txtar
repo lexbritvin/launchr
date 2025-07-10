@@ -321,8 +321,6 @@ stdout '^argEnum: <nil> <nil> false$'
 # =============================================================================
 
 # String Argument Action
-# Path: test-print-input/actions/arg-string/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/arg-string/action.yaml --
 # Plugin action demonstrating string argument handling
 # String type is implicit when no type is specified
@@ -339,8 +337,6 @@ action:
       # Note: type defaults to string when not specified
 
 # Integer Argument Action
-# Path: test-print-input/actions/arg-integer/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/arg-integer/action.yaml --
 # Plugin action demonstrating integer argument handling
 runtime: plugin                           # Plugin execution type
@@ -356,8 +352,6 @@ action:
       required: true                       # Must be provided by user
 
 # Number (Float) Argument Action
-# Path: test-print-input/actions/arg-number/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/arg-number/action.yaml --
 # Plugin action demonstrating number (float) argument handling
 runtime: plugin                           # Plugin execution type
@@ -373,8 +367,6 @@ action:
       required: true                       # Must be provided by user
 
 # Boolean Argument Action
-# Path: test-print-input/actions/arg-boolean/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/arg-boolean/action.yaml --
 # Plugin action demonstrating boolean argument handling
 runtime: plugin                           # Plugin execution type
@@ -390,8 +382,6 @@ action:
       required: true                       # Must be provided by user
 
 # Enum Argument Action
-# Path: test-print-input/actions/arg-enum/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/arg-enum/action.yaml --
 # Plugin action demonstrating enum argument handling
 runtime: plugin                           # Plugin execution type
@@ -408,8 +398,6 @@ action:
       required: true                       # Must be provided by user
 
 # Email Format Argument Action
-# Path: test-print-input/actions/arg-email/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/arg-email/action.yaml --
 # Plugin action demonstrating formatted string argument handling
 runtime: plugin                           # Plugin execution type
@@ -426,8 +414,6 @@ action:
       required: true                       # Must be provided by user
 
 # Multiple Arguments Action
-# Path: test-print-input/actions/args-3/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/args-3/action.yaml --
 # Plugin action demonstrating multiple argument handling with defaults
 runtime: plugin                           # Plugin execution type

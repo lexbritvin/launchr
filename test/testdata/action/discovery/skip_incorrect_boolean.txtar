@@ -37,8 +37,6 @@ stdout 'given value type \(string\) and expected type \(bool\) mismatch, line 13
 # =============================================================================
 
 # Boolean Option with Invalid String Default
-# Path: actions/opt-number-incorrect-default/action.yaml
-# -----------------------------------------------------------------------------
 -- actions/opt-number-incorrect-default/action.yaml --
 # Plugin action demonstrating boolean option type validation failure
 # This configuration intentionally contains a type mismatch error

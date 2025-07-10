@@ -75,8 +75,6 @@ stdout '^optInteger: 73 int true$'
 # =============================================================================
 
 # First Shorthand Action
-# Path: test-print-input/actions/shorthand/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/shorthand/action.yaml --
 # Plugin action demonstrating option shorthand functionality
 # Shows how to define single-character aliases for options
@@ -93,8 +91,6 @@ action:
       type: integer                        # Explicit integer type
 
 # Second Shorthand Action (Same Shorthand)
-# Path: test-print-input/actions/shorthand2/action.yaml
-# -----------------------------------------------------------------------------
 -- test-print-input/actions/shorthand2/action.yaml --
 # Plugin action demonstrating shorthand reusability across actions
 # Shows that same shorthand can be used in different actions
