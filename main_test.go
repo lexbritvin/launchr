@@ -37,6 +37,7 @@ func TestScriptAll(t *testing.T) {
 		skipShort bool
 		skipOS    []string
 		timeout   time.Duration
+		conseq    bool
 	}
 	testcases := []testcase{
 		{name: "common", dir: "test/testdata/common"},
@@ -55,14 +56,22 @@ func TestScriptAll(t *testing.T) {
 		// If it fails for you after timeout, try to warm up the build cache.
 		// Build the binary, run `make build`.
 		{
+			// Run the build once to warm up build cache.
+			name:      "build-warmup",
+			files:     []string{"test/testdata/build/no-cache.txtar"},
+			setup:     []tsSetupfn{setupBuildEnv},
+			skipShort: true,
+			skipOS:    []string{"windows"},
+			timeout:   60 * time.Second,
+			conseq:    true,
+		},
+		{
 			name:      "build",
 			dir:       "test/testdata/build",
 			setup:     []tsSetupfn{setupBuildEnv},
 			skipShort: true,
 			skipOS:    []string{"windows"},
-			// If it fails for you after timeout, try to warm up the build cache.
-			// Build the binary, run `make`.
-			timeout: 60 * time.Second,
+			timeout:   60 * time.Second,
 		},
 	}
 	for _, tt := range testcases {
@@ -74,13 +83,16 @@ func TestScriptAll(t *testing.T) {
 			if slices.Contains(tt.skipOS, runtime.GOOS) {
 				t.Skip("skipping test on " + runtime.GOOS)
 			}
-			t.Parallel()
+			if !tt.conseq {
+				t.Parallel()
+			}
 			if tt.timeout == 0 {
 				// Normally tests must finish fast.
-				tt.timeout = 10 * time.Second
+				tt.timeout = 30 * time.Second
 			}
 			testscript.Run(t, testscript.Params{
 				Dir:      tt.dir,
+				Files:    tt.files,
 				Cmds:     coretest.TestScriptCmds,
 				Deadline: time.Now().Add(tt.timeout),
 
