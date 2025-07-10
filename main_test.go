@@ -51,6 +51,7 @@ func TestScriptAll(t *testing.T) {
 			setup:     []tsSetupfn{coretest.SetupDockerEnv},
 			skipShort: true,
 			timeout:   30 * time.Second, // Download and build of images may take time on cold run.
+			conseq:    true,
 		},
 		// Build is a very heavy test, run it the last.
 		// If it fails for you after timeout, try to warm up the build cache.
