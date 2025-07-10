@@ -56,6 +56,7 @@ func NewVersion(name, ver, bwith string, plugins PluginsMap) *AppVersion {
 		Version:     ver,
 		OS:          runtime.GOOS,
 		Arch:        runtime.GOARCH,
+		Debug:       isDebugAvailable(buildInfo),
 		CoreVersion: coreVer,
 		CoreReplace: coreRep,
 		BuiltWith:   bwith,
@@ -133,12 +134,29 @@ func getPluginModules(plugins PluginsMap, bi *debug.BuildInfo) (res []string, re
 	return
 }
 
+// isDebugAvailable checks if the current binary has debug headers available.
+func isDebugAvailable(bi *debug.BuildInfo) bool {
+	// Check for debug-related build settings
+	for _, setting := range bi.Settings {
+		if setting.Key == "-gcflags" {
+			// Check if gcflags contains debug-related flags
+			if strings.Contains(setting.Value, "-N") && strings.Contains(setting.Value, "-l") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 var versionTmpl = template.Must(template.New("version").Parse(versionTmplStr))
 
 const versionTmplStr = `
 {{- .Short}}
 {{- if .BuiltWith}}
 Built with {{.BuiltWith}}
+{{- end}}
+{{- if .Debug}}
+Built with debug headers
 {{- end}}
 {{- if ne .CoreVersion .Version}}
 Core version: {{.CoreVersion}}

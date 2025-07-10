@@ -87,6 +87,7 @@ type AppVersion struct {
 	Version     string
 	OS          string
 	Arch        string
+	Debug       bool
 	BuiltWith   string
 	CoreVersion string
 	CoreReplace string
