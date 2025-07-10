@@ -156,7 +156,7 @@ jobs:
           mkdir -p $GOTMPDIR
           echo "📁 Using temp directory: $GOTMPDIR"
           echo "GOTMPDIR=$GOTMPDIR" >> $GITHUB_ENV
-# TODO: Configure go path on macos /Users/runner/hostedtoolcache/go/1.24.4/arm64/bin/go
+          # TODO: Configure go path on macos /Users/runner/hostedtoolcache/go/1.24.4/arm64/bin/go
           if [[ "${{ runner.os }}" == "Windows" && "${{ runner.arch }}" == "ARM64" ]]; then
             echo "⚠️ WARNING: Delve debugger is not available on Windows ARM64"
             echo "🚫 Remote debugging features will be limited on this platform"
