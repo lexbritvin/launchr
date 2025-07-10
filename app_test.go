@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 	})
 }
 
-func TestScriptAll(t *testing.T) {
+func TestBinary(t *testing.T) {
 	t.Parallel()
 	type tsSetupfn = func(*testscript.Env) error
 	type testcase struct {
@@ -40,23 +40,27 @@ func TestScriptAll(t *testing.T) {
 		conseq    bool
 	}
 	testcases := []testcase{
-		{name: "common", dir: "test/testdata/common"},
-		{name: "action/discovery", dir: "test/testdata/action/discovery"},
-		{name: "action/input", dir: "test/testdata/action/input"},
+		{name: "common", dir: "test/testdata/common", timeout: 30 * time.Second},
+		{name: "action/discovery", dir: "test/testdata/action/discovery", timeout: 30 * time.Second},
+		{name: "action/input", dir: "test/testdata/action/input", timeout: 30 * time.Second},
 
-		{name: "runtime/shell", dir: "test/testdata/runtime/shell"},
+		// Runtime Shell.
+		{name: "runtime/shell", dir: "test/testdata/runtime/shell", timeout: 30 * time.Second},
+		// Runtime Docker.
 		{
 			name:      "runtime/container/docker",
 			dir:       "test/testdata/runtime/container",
 			setup:     []tsSetupfn{coretest.SetupEnvDocker, coretest.SetupEnvRandom},
 			skipShort: true,
-			timeout:   60 * time.Second, // Download and build of images may take time on cold run.
+			timeout:   120 * time.Second, // Download and build of images may take time on cold run.
 		},
-		// Build is a very heavy test, run it the last.
-		// If it fails for you after timeout, try to warm up the build cache.
-		// Build the binary, run `make build`.
+
+		// Test binary build using self.
+		// This test must run last and should not be parallelized,
+		// so that the build cache is warm after it.
+		// If it fails due to a timeout, try warming the cache manually with `make build`.
 		{
-			// Run the build once to warm up build cache.
+			// Run the build once to warm up the build cache.
 			name:      "build-warmup",
 			files:     []string{"test/testdata/build/no-cache.txtar"},
 			setup:     []tsSetupfn{setupBuildEnv},
@@ -86,15 +90,16 @@ func TestScriptAll(t *testing.T) {
 			if !tt.conseq {
 				t.Parallel()
 			}
-			if tt.timeout == 0 {
-				// Normally tests must finish fast.
-				tt.timeout = 30 * time.Second
+			var deadline time.Time
+			if tt.timeout != 0 {
+				deadline = time.Now().Add(tt.timeout)
 			}
+
 			testscript.Run(t, testscript.Params{
 				Dir:      tt.dir,
 				Files:    tt.files,
 				Cmds:     coretest.CmdsTestScript(),
-				Deadline: time.Now().Add(tt.timeout),
+				Deadline: deadline,
 
 				RequireExplicitExec: true,
 				RequireUniqueNames:  true,

@@ -126,7 +126,7 @@ jobs:
         with:
           condition-type: 'job'
           job-name: '/How to connect/'
-          timeout-seconds: 1800
+          timeout-seconds: 3600
           poll-interval-seconds: 30
 
   debug-session:
@@ -149,7 +149,14 @@ jobs:
         shell: bash
         run: |
           echo "🔧 Setting up debugging environment..."
-          
+          echo "$PATH"
+          go env GOPATH
+
+          export GOTMPDIR="$(pwd)/.gotmp"
+          mkdir -p $GOTMPDIR
+          echo "📁 Using temp directory: $GOTMPDIR"
+          echo "GOTMPDIR=$GOTMPDIR" >> $GITHUB_ENV
+# TODO: Configure go path on macos /Users/runner/hostedtoolcache/go/1.24.4/arm64/bin/go
           if [[ "${{ runner.os }}" == "Windows" && "${{ runner.arch }}" == "ARM64" ]]; then
             echo "⚠️ WARNING: Delve debugger is not available on Windows ARM64"
             echo "🚫 Remote debugging features will be limited on this platform"
@@ -162,6 +169,41 @@ jobs:
           echo "📦 Downloading Go modules..."
           go mod download
           echo "✅ Dependencies ready!"
+
+      - name: Save Go environment variables
+        shell: bash
+        run: |
+          echo "📋 Saving: GOTMPDIR=${GOTMPDIR}"
+          
+          case "$RUNNER_OS" in
+            "Linux"|"macOS")
+              # Remove existing entries
+              if [[ "$RUNNER_OS" == "macOS" ]]; then
+                sudo sed -i '' '/export GOTMPDIR/d' /etc/profile 2>/dev/null || true
+              else
+                sudo sed -i '/export GOTMPDIR/d' /etc/profile 2>/dev/null || true
+              fi
+          
+              # Add Go environment variables
+              echo "export GOTMPDIR=\"${GOTMPDIR}\"" | sudo tee -a /etc/profile
+
+              echo "✅ Saved to /etc/profile"
+              echo "To use: source /etc/profile"
+              ;;
+          
+            "Windows")
+              # Set system environment variables
+              setx GOTMPDIR "${GOTMPDIR}" //M 2>/dev/null
+
+              echo "✅ Saved to Windows system environment"
+              echo "To use: Open new terminal session"
+              ;;
+          
+            *)
+              echo "❌ Unsupported OS: $RUNNER_OS"
+              exit 1
+              ;;
+          esac
 
       - name: 🐳 Configure Remote Docker
         id: docker-setup
@@ -182,6 +224,7 @@ jobs:
           ssh-jump-forward: ${{ env.SSH_JUMP_FORWARD }}
           use-actor-ssh-keys: 'true'
           detached: 'true'
+          wait-timeout: '3600'
 
       - name: 👉 How to connect 👈
         env:

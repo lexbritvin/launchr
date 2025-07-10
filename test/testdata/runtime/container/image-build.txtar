@@ -24,7 +24,9 @@
 # - Validates checksum tracking and cleanup operations
 # =============================================================================
 
-# Prepare random image registry for builds.
+# Prepare a randomized image registry for builds.
+# This ensures unique registry names in shared environments,
+# such as GitHub Actions on Windows/macOS, or in Kubernetes clusters.
 env IMAGE_REGISTRY=$RANDOM
 txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-1/action.yaml actions/testimage-1/action.yaml
 txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-2/action.yaml actions/testimage-2/action.yaml
