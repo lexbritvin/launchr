@@ -151,7 +151,7 @@ jobs:
           
           echo "🔍 Running tests..."
           set -euo pipefail
-          go test -json -v ./... 2>&1 | tee .gotmp/gotest.log | gotestfmt
+          go test -json -v ./... 2>&1 | tee .gotmp/gotest.log | gotestfmt -hide empty-packages
           
           echo "✅ All tests completed successfully!"
 

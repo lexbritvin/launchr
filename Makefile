@@ -40,9 +40,9 @@ RESET=\033[0m
 
 # Print functions
 define print_header
-	@echo "$(BOLD)$(CYAN)╔══════════════════════════════════════════════════════════════╗$(RESET)"
-	@echo "$(BOLD)$(CYAN)║                         🚀 LAUNCHR                          ║$(RESET)"
-	@echo "$(BOLD)$(CYAN)╚══════════════════════════════════════════════════════════════╝$(RESET)"
+	@echo "$(BOLD)$(CYAN)╔═════════════════════════════════════════════════════════════╗$(RESET)"
+	@echo "$(BOLD)$(CYAN)║                           LAUNCHR                           ║$(RESET)"
+	@echo "$(BOLD)$(CYAN)╚═════════════════════════════════════════════════════════════╝$(RESET)"
 endef
 
 define print_success
@@ -70,7 +70,7 @@ define print_step
 endef
 
 .PHONY: all
-all: banner deps test build
+all: banner deps test-short build
 	$(call print_success,"🎉 All tasks completed successfully!")
 
 .PHONY: banner
