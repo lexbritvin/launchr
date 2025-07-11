@@ -8,16 +8,14 @@
 # 2. Extra hosts configuration for container networking
 # 3. Output stream handling (stdout/stderr separation)
 # 4. Command execution override functionality
-# 5. Signal forwarding from host to container processes
-# 6. Entrypoint override capabilities
-# 7. Container process lifecycle management
+# 5. Entrypoint override capabilities
+# 6. Container process lifecycle management
 #
 # Test Structure:
 # - Tests environment variable injection and templating
 # - Tests custom host entries in container /etc/hosts
 # - Tests proper output stream routing
 # - Tests command and entrypoint override mechanisms
-# - Tests signal handling and process termination
 # - Validates container runtime integration features
 # =============================================================================
 
@@ -108,29 +106,6 @@ stdout '^entrypoint command$'
 # Validate clean execution
 ! stderr .
 
-# Test 7: Signal Forwarding and Process Management
-# -----------------------------------------------------------------------------
-# Execute long-running action and test signal forwarding
-! exec launchr test-signal &appint&
-
-# Allow container process to start and begin waiting
-sleep 2s
-
-# Send interrupt signal to test signal forwarding
-kill -INT appint
-
-# Wait for process to complete and validate exit behavior
-wait appint
-
-# Validate signal reception and handling
-stdout '^Received signal: SIGINT$'
-
-# Validate proper exit code handling (custom exit code 42)
-stdout 'action "test-signal" finished with exit code 42'
-
-# Validate clean execution (no stderr output)
-! stderr .
-
 # =============================================================================
 # Test Data Files - Action Configurations and Scripts
 # =============================================================================
@@ -201,35 +176,6 @@ runtime:
       echo "output to stdout"             # Write to standard output
       echo "output to stderr" >&2         # Write to standard error
 
-# Signal Forwarding Test Action
--- actions/test-signal/action.yaml  --
-# Container action for testing signal forwarding and process management
-action:
-  title: test signal forwarding          # Human-readable action name
-
-runtime:
-  type: container                         # Container execution type
-  image: alpine:latest                    # Base container image
-  command:
-    - sh                                  # Shell interpreter
-    - /action/main.sh                     # Execute signal handling script
-
-# Signal Handling Script
--- actions/test-signal/main.sh --
-#!/bin/sh
-# Signal handling demonstration script
-
-# Set up signal trap for SIGINT (Ctrl+C)
-# When SIGINT is received, print message and exit with code 42
-trap 'echo "Received signal: SIGINT"; exit 42' INT
-
-# Indicate that script is ready to receive signals
-echo "Waiting for signals..."
-
-# Sleep for extended period to allow signal testing
-# Script will be interrupted by signal before completion
-sleep 3
-
 # =============================================================================
 # Expected Behavior Summary
 # =============================================================================
@@ -257,13 +203,6 @@ sleep 3
 # - --entrypoint flag allows entrypoint override
 # - Original action commands are bypassed when overridden
 # - Override commands receive proper argument passing
-#
-# Signal Forwarding:
-# - Host signals are forwarded to container processes
-# - Container processes can implement signal handlers
-# - Custom exit codes are preserved and reported
-# - Process lifecycle is properly managed
-# - Background process execution is supported
 #
 # Container Runtime Integration:
 # - All features work with standard container images

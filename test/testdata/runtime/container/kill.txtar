@@ -1,0 +1,57 @@
+[windows] skip 'testing kill is not supported on windows'
+
+# Test: Signal Forwarding and Process Management
+# -----------------------------------------------------------------------------
+# Execute long-running action and test signal forwarding
+! exec launchr test-signal &appint&
+
+# Allow container process to start and begin waiting
+sleep 2s
+
+# Send interrupt signal to test signal forwarding
+kill -INT &appint&
+
+# Wait for process to complete and validate exit behavior
+wait &appint&
+
+# Validate signal reception and handling
+stdout '^Received signal: SIGINT$'
+
+# Validate proper exit code handling (custom exit code 42)
+stdout 'action "test-signal" finished with exit code 42'
+
+# Validate clean execution (no stderr output)
+! stderr .
+
+# =============================================================================
+# Test Data Files - Action Configurations and Scripts
+# =============================================================================
+
+# Signal Forwarding Test Action
+-- actions/test-signal/action.yaml  --
+# Container action for testing signal forwarding and process management
+action:
+  title: test signal forwarding          # Human-readable action name
+
+runtime:
+  type: container                         # Container execution type
+  image: alpine:latest                    # Base container image
+  command:
+    - sh                                  # Shell interpreter
+    - /action/main.sh                     # Execute signal handling script
+
+# Signal Handling Script
+-- actions/test-signal/main.sh --
+#!/bin/sh
+# Signal handling demonstration script
+
+# Set up signal trap for SIGINT (Ctrl+C)
+# When SIGINT is received, print message and exit with code 42
+trap 'echo "Received signal: SIGINT"; exit 42' INT
+
+# Indicate that script is ready to receive signals
+echo "Waiting for signals..."
+
+# Sleep for extended period to allow signal testing
+# Script will be interrupted by signal before completion
+sleep 10

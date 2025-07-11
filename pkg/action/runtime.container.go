@@ -616,6 +616,17 @@ func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, ds
 		return err
 	}
 
+	options := driver.CopyToContainerOptions{}
+
+	var tarOpts *archive.TarOptions
+	if runtime.GOOS == "windows" {
+		tarOpts = &archive.TarOptions{ChownOpts: &archive.ChownOpts{
+			UID: 1000,
+			GID: 1000,
+		}}
+		options.CopyUIDGID = true
+	}
+
 	arch, err := archive.Tar(
 		archive.CopyInfo{
 			Path:       srcPath,
@@ -626,7 +637,7 @@ func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, ds
 			Exists: true,
 			IsDir:  dstStat.Mode.IsDir(),
 		},
-		nil,
+		tarOpts,
 	)
 	if err != nil {
 		return err
@@ -637,10 +648,7 @@ func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, ds
 	if !dstStat.Mode.IsDir() {
 		dstDir = filepath.Base(dstPath)
 	}
-	options := driver.CopyToContainerOptions{
-		AllowOverwriteDirWithFile: false,
-		CopyUIDGID:                false,
-	}
+
 	return c.crt.CopyToContainer(ctx, cid, dstDir, arch, options)
 }
 

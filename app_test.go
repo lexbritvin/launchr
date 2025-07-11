@@ -9,6 +9,7 @@ import (
 
 	"github.com/rogpeppe/go-internal/testscript"
 
+	"github.com/launchrctl/launchr/internal/launchr"
 	coretest "github.com/launchrctl/launchr/test"
 )
 
@@ -91,7 +92,7 @@ func TestBinary(t *testing.T) {
 				t.Parallel()
 			}
 			var deadline time.Time
-			if tt.timeout != 0 {
+			if tt.timeout != 0 && !launchr.Version().Debug {
 				deadline = time.Now().Add(tt.timeout)
 			}
 

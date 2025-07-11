@@ -179,7 +179,7 @@ func collectInputVars(values map[string]any, params InputParams, def ParametersL
 
 func addPredefinedVariables(data map[string]any, a *Action) {
 	cuser := getCurrentUser()
-	// Set zeros for running in environments like Windows
+	// Set zeros for running in environments where we couldn't get user id.ser
 	data["current_uid"] = 0
 	data["current_gid"] = 0
 	if cuser != "" {

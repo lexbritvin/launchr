@@ -151,7 +151,7 @@ func (a *Action) syncToDisk() (err error) {
 		return
 	}
 	// We use subpath if there are multiple directories in the FS.
-	fsys, err := fs.Sub(a.fs.fs, filepath.Dir(a.Filepath()))
+	fsys, err := fs.Sub(a.fs.fs, filepath.ToSlash(filepath.Dir(a.Filepath())))
 	if err != nil {
 		return
 	}
