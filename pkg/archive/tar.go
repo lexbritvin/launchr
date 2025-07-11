@@ -16,6 +16,7 @@ import (
 // Compression is the state represents if compressed or not.
 type Compression compression.Compression
 
+// ChownOpts has ownership of files in the archive.
 type ChownOpts archive.ChownOpts
 
 // Compressions types.

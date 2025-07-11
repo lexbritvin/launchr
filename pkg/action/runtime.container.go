@@ -383,10 +383,11 @@ func (u userInfo) String() string {
 
 func getCurrentUser() userInfo {
 	// Use neutral 1000 when we can't get UID like on Windows.
-	const defaultUid = 1000
+	const defaultUID = 1000
+	const defaultGID = 1000
 	curuser := userInfo{
-		UID: defaultUid,
-		GID: defaultUid,
+		UID: defaultUID,
+		GID: defaultGID,
 	}
 	// If running in a container native environment, run container as a current user.
 	switch runtime.GOOS {
@@ -632,7 +633,7 @@ func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, ds
 	}
 
 	// Set UID explicitly when run on Windows because files are copied as root.
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" { //nolint:goconst
 		user := getCurrentUser()
 		tarOpts = &archive.TarOptions{ChownOpts: &archive.ChownOpts{UID: user.UID, GID: user.GID}}
 	}
