@@ -275,7 +275,7 @@ func Test_ContainerExec_createContainerDef(t *testing.T) {
 			"env1=var1",
 			"env2=var2",
 		},
-		User: getCurrentUser(),
+		User: getCurrentUser().String(),
 	}
 	defaultCmd := []string{"my", "cmd"}
 	var defaultEntrypoint []string
@@ -417,7 +417,7 @@ func Test_ContainerExec(t *testing.T) {
 		},
 		WorkingDir: containerHostMount,
 		Env:        runConf.Env,
-		User:       getCurrentUser(),
+		User:       getCurrentUser().String(),
 	}
 
 	errImgEns := errors.New("image ensure error")

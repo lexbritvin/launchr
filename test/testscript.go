@@ -2,7 +2,6 @@
 package test
 
 import (
-	"bytes"
 	"os"
 	"strconv"
 	"time"
@@ -24,8 +23,7 @@ func CmdsTestScript() map[string]func(ts *testscript.TestScript, neg bool, args 
 		//	txtproc remove-regex 'pattern' input.txt output.txt
 		//	txtproc extract-lines 'pattern' input.txt output.txt
 		//	txtproc extract-regex 'pattern' input.txt output.txt
-		"txtproc":  CmdTxtProc,
-		"dos2unix": CmdDos2unix,
+		"txtproc": CmdTxtProc,
 		// sleep pauses execution for a specified duration
 		// Usage:
 		//  sleep <duration>
@@ -88,45 +86,4 @@ func CmdSleep(ts *testscript.TestScript, neg bool, args []string) {
 	}
 
 	time.Sleep(duration)
-}
-
-// CmdDos2unix converts CRLF line endings to LF in the specified files
-func CmdDos2unix(ts *testscript.TestScript, neg bool, args []string) {
-	if neg {
-		ts.Fatalf("unsupported: ! dos2unix")
-	}
-	if len(args) < 1 {
-		ts.Fatalf("usage: dos2unix paths...")
-	}
-	for _, file := range args {
-		// Get absolute path relative to test directory
-		absPath := ts.MkAbs(file)
-
-		// Check if file exists
-		if _, err := os.Stat(absPath); os.IsNotExist(err) {
-			ts.Fatalf("dos2unix: file %s does not exist", file)
-		}
-
-		// Read file content
-		content, err := os.ReadFile(absPath)
-		if err != nil {
-			ts.Fatalf("dos2unix: failed to read %s: %v", file, err)
-		}
-
-		// Convert CRLF to LF
-		content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
-		// Also handle standalone CR (classic Mac line endings)
-		content = bytes.ReplaceAll(content, []byte("\r"), []byte("\n"))
-
-		// Write back to file, preserving original file permissions
-		fileInfo, err := os.Stat(absPath)
-		if err != nil {
-			ts.Fatalf("dos2unix: failed to get file info for %s: %v", file, err)
-		}
-
-		err = os.WriteFile(absPath, content, fileInfo.Mode())
-		if err != nil {
-			ts.Fatalf("dos2unix: failed to write %s: %v", file, err)
-		}
-	}
 }

@@ -179,14 +179,8 @@ func collectInputVars(values map[string]any, params InputParams, def ParametersL
 
 func addPredefinedVariables(data map[string]any, a *Action) {
 	cuser := getCurrentUser()
-	// Set zeros for running in environments where we couldn't get user id.ser
-	data["current_uid"] = 0
-	data["current_gid"] = 0
-	if cuser != "" {
-		s := strings.Split(cuser, ":")
-		data["current_uid"] = s[0]
-		data["current_gid"] = s[1]
-	}
+	data["current_uid"] = cuser.UID
+	data["current_gid"] = cuser.GID
 	data["current_working_dir"] = launchr.EscapePathString(a.wd)         // app working directory
 	data["actions_base_dir"] = launchr.EscapePathString(a.fs.Realpath()) // root directory where the action was found
 	data["action_dir"] = launchr.EscapePathString(a.Dir())               // directory of action file

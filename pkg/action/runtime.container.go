@@ -8,6 +8,7 @@ import (
 	osuser "os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/launchrctl/launchr/internal/launchr"
@@ -371,18 +372,30 @@ func (c *runtimeContainer) Execute(ctx context.Context, a *Action) (err error) {
 	return err
 }
 
-func getCurrentUser() string {
-	curuser := ""
+type userInfo struct {
+	UID int
+	GID int
+}
+
+func (u userInfo) String() string {
+	return fmt.Sprintf("%d:%d", u.UID, u.GID)
+}
+
+func getCurrentUser() userInfo {
+	// Use neutral 1000 when we can't get UID like on Windows.
+	const defaultUid = 1000
+	curuser := userInfo{
+		UID: defaultUid,
+		GID: defaultUid,
+	}
 	// If running in a container native environment, run container as a current user.
 	switch runtime.GOOS {
 	case "linux", "darwin":
 		u, err := osuser.Current()
 		if err == nil {
-			curuser = u.Uid + ":" + u.Gid
+			curuser.UID, _ = strconv.Atoi(u.Uid)
+			curuser.GID, _ = strconv.Atoi(u.Gid)
 		}
-	case "windows":
-		// Use neutral 1000 as in WSL.
-		curuser = "1000:1000"
 	}
 	return curuser
 }
@@ -539,7 +552,7 @@ func (c *runtimeContainer) createContainerDef(a *Action, cname string) driver.Co
 		WorkingDir:    containerHostMount,
 		ExtraHosts:    runDef.Container.ExtraHosts,
 		Env:           runDef.Container.Env,
-		User:          getCurrentUser(),
+		User:          getCurrentUser().String(),
 		Entrypoint:    entrypoint,
 		Streams: driver.ContainerStreamsOptions{
 			Stdin:  !streams.In().IsDiscard(),
@@ -610,21 +623,18 @@ func (c *runtimeContainer) copyAllFromContainer(ctx context.Context, cid string,
 
 // copyToContainer copies dir/file to a container. Directory will be copied as a subdirectory.
 func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, dstPath, rebaseName string) error {
+	var tarOpts *archive.TarOptions
+	copyOpts := driver.CopyToContainerOptions{}
 	// Prepare destination copy info by stat-ing the container path.
 	dstStat, err := c.crt.ContainerStatPath(ctx, cid, dstPath)
 	if err != nil {
 		return err
 	}
 
-	options := driver.CopyToContainerOptions{}
-
-	var tarOpts *archive.TarOptions
+	// Set UID explicitly when run on Windows because files are copied as root.
 	if runtime.GOOS == "windows" {
-		tarOpts = &archive.TarOptions{ChownOpts: &archive.ChownOpts{
-			UID: 1000,
-			GID: 1000,
-		}}
-		options.CopyUIDGID = true
+		user := getCurrentUser()
+		tarOpts = &archive.TarOptions{ChownOpts: &archive.ChownOpts{UID: user.UID, GID: user.GID}}
 	}
 
 	arch, err := archive.Tar(
@@ -649,7 +659,7 @@ func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, ds
 		dstDir = filepath.Base(dstPath)
 	}
 
-	return c.crt.CopyToContainer(ctx, cid, dstDir, arch, options)
+	return c.crt.CopyToContainer(ctx, cid, dstDir, arch, copyOpts)
 }
 
 func (c *runtimeContainer) copyFromContainer(ctx context.Context, cid, srcPath, dstPath, rebaseName string) (err error) {

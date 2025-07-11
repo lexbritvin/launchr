@@ -26,16 +26,9 @@ mkdir remote-wd-1 remote-wd-2 remote-wd-3
 cp dummydata/host.txt remote-wd-1/host.txt
 cp dummydata/host.txt remote-wd-2/host.txt
 cp dummydata/host.txt remote-wd-3/host.txt
-# Ensure the directory inside the container can be edited by any container user
-chmod 777 remote-wd-1
-chmod 777 remote-wd-2
-chmod 777 remote-wd-3
 
 # Ensure docker can modify files in the TMP directory on Windows.
 [windows] exec icacls $WORK /grant Everyone:M /T
-
-# Fix line endings for Bash scripts on Windows.
-#[windows] dos2unix actions/test-remote/main.sh
 
 # Test 1: Local Execution with Custom Working Directory
 # -----------------------------------------------------------------------------
@@ -156,7 +149,7 @@ exec launchr test-embed-fs:container
 stdout '^action ls: action\.yaml container\.txt main\.sh$'
 
 # Validate embedded action can see host file system
-stdout '^host ls: actions container\.txt dummydata$'
+stdout '^host ls: actions container\.txt dummydata remote-wd-1 remote-wd-2 remote-wd-3$'
 
 # Validate embedded action can write to host file system
 grep '^hello host from container$' ./container.txt
@@ -176,7 +169,7 @@ exec launchr test-embed-fs:container --remote-runtime
 stdout '^action ls: action\.yaml container\.txt main\.sh$'
 
 # Validate embedded action can see host file system in remote environment
-stdout '^host ls: actions container\.txt dummydata$'
+stdout '^host ls: actions container\.txt dummydata remote-wd-1 remote-wd-2 remote-wd-3$'
 
 # Validate embedded action output file was NOT copied back to host
 # (Remote execution without copy-back doesn't affect host file system)
