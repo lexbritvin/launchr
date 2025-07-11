@@ -161,7 +161,7 @@ jobs:
         if: always()
         with:
           name: test-log-${{ matrix.os }}
-          path: .gotmp/gotest.log
+          path: ${{ env.WORKING_DIR}}/.gotmp/gotest.log
           retention-days: 3
           if-no-files-found: error
 
