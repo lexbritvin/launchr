@@ -127,7 +127,6 @@ install: all
 # Install and run linters
 .PHONY: lint
 lint: .install-lint .lint-fix
-	$(call print_success,"🔍 Linting completed!")
 
 # Install golangci-lint binary
 .PHONY: .install-lint
@@ -151,12 +150,18 @@ endif
 .PHONY: .lint-fix
 .lint-fix:
 	$(call print_step,"Running linters with auto-fix...")
-	@$(GOLANGCI_BIN) run --fix ./...
+	@$(GOLANGCI_BIN) run --fix ./... && \
+	echo "$(BOLD)$(GREEN)🔍 ✅ All linting checks passed$(RESET)" || \
+	echo "$(BOLD)$(YELLOW)🔍 ⚠️  Some linting issues found - please review$(RESET)"
+	@echo
 
 .PHONY: .lint
 .lint:
 	$(call print_step,"Running linters...")
-	@$(GOLANGCI_BIN) run
+	@$(GOLANGCI_BIN) run && \
+	echo "$(BOLD)$(GREEN)🔍 ✅ All linting checks passed$(RESET)" || \
+	echo "$(BOLD)$(YELLOW)🔍 ⚠️ Some linting issues found - please review$(RESET)"
+	@echo
 
 # Clean build artifacts
 .PHONY: clean
