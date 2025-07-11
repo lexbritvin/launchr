@@ -156,12 +156,13 @@ jobs:
           echo "✅ All tests completed successfully!"
 
       # Upload the original go test log as an artifact for later review.
-      - name: Upload test log
-        uses: actions/upload-artifact@v2
+      - name: ⬆️ Upload test log
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-log-${{ matrix.os }}
           path: .gotmp/gotest.log
+          retention-days: 3
           if-no-files-found: error
 
   lint:
