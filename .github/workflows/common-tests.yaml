@@ -125,6 +125,7 @@ jobs:
         run: |
           echo "📥 Downloading Go modules..."
           go mod download
+          go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
           echo "✅ Dependencies downloaded successfully!"
 
       # Set up the Docker sidecar environment
@@ -149,9 +150,19 @@ jobs:
           make build
           
           echo "🔍 Running tests..."
-          go test ./...
+          set -euo pipefail
+          go test -json -v ./... 2>&1 | tee .gotmp/gotest.log | gotestfmt
           
           echo "✅ All tests completed successfully!"
+
+      # Upload the original go test log as an artifact for later review.
+      - name: Upload test log
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: test-log-${{ matrix.os }}
+          path: .gotmp/gotest.log
+          if-no-files-found: error
 
   lint:
     name: 🧹 Lint & Code Quality

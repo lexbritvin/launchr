@@ -53,7 +53,7 @@ func TestBinary(t *testing.T) {
 			dir:       "test/testdata/runtime/container",
 			setup:     []tsSetupfn{coretest.SetupEnvDocker, coretest.SetupEnvRandom},
 			skipShort: true,
-			timeout:   120 * time.Second, // Download and build of images may take time on cold run.
+			timeout:   180 * time.Second, // Download and build of images may take time on cold run.
 		},
 
 		// Test binary build using self.
@@ -104,7 +104,6 @@ func TestBinary(t *testing.T) {
 
 				RequireExplicitExec: true,
 				RequireUniqueNames:  true,
-				ContinueOnError:     true,
 
 				Setup: func(env *testscript.Env) error {
 					for _, fn := range tt.setup {
