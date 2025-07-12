@@ -1,0 +1,29 @@
+[windows] skip 'testing kill is not supported on windows'
+
+! exec launchr test-signal -vvvv &appint&
+
+sleep 1
+
+kill -INT appint
+
+wait appint
+
+stdout '^Waiting for signals...$'
+stdout '^Received signal: SIGINT$'
+
+stdout 'action "test-signal" finished with exit code 42'
+
+! stderr .
+
+-- actions/test-signal/action.yaml  --
+action:
+  title: test signal forwarding
+  description: Test signal forwarding
+
+runtime:
+  type: shell
+  script: |
+    trap 'echo "Received signal: SIGINT"; exit 42' INT
+    echo "Waiting for signals..."
+    sleep 5
+    exit 45

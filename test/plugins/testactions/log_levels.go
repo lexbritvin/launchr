@@ -15,13 +15,13 @@ action:
 
 func actionLogLevels() *action.Action {
 	// Create an action that outputs to log all message types.
-	logLevelsAction := action.NewFromYAML("testplugin:log-levels", []byte(logLevelsYaml))
-	logLevelsAction.SetRuntime(action.NewFnRuntime(func(_ context.Context, _ *action.Action) error {
+	a := action.NewFromYAML("testplugin:log-levels", []byte(logLevelsYaml))
+	a.SetRuntime(action.NewFnRuntime(func(_ context.Context, _ *action.Action) error {
 		launchr.Log().Debug("this is DEBUG log")
 		launchr.Log().Info("this is INFO log")
 		launchr.Log().Warn("this is WARN log")
 		launchr.Log().Error("this is ERROR log")
 		return nil
 	}))
-	return logLevelsAction
+	return a
 }

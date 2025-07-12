@@ -1,44 +1,83 @@
-# TODO Test shell runtime
-# TODO: Test signals
-# TODO: Test custom env and env passthough.
-# TODO: Test passing log format in subactions
-# TODO: Test other actions work
-# TODO: Add Windows support
-# TODO: Test stderr
 # TODO: Test sensitive in subactions
+# TODO: Fix Windows
 
-chmod 777 actions/test-shell/main.sh
-exec launchr test-shell -vvvv
+chmod 777 test-shell/actions/env/main.sh
 
--- actions/test-shell/action.yaml --
+env HOST_ENV_1=foo
+env HOST_ENV_2=bar
+exec launchr test-shell:env
+
+stdout '^ACTION_ENV_1=foo ACTION_ENV_2=buz$'
+stdout '^HOST_ENV_1=foo HOST_ENV_2=fred$'
+stdout '^host: foo bar$'
+stdout '^action dir tpl: '$WORK'/test-shell/actions/env$'
+stdout '^action dir sh: '$WORK'/test-shell/actions/env$'
+stdout '^current bin tpl: /.*/launchr$'
+stdout '^current bin sh: /.*/launchr$'
+! stderr .
+
+exec launchr test-shell:stderr
+stdout '^output to stdout$'
+stderr '^output to stderr$'
+
+exec launchr test-shell:call-self
+stdout '^launchr version v0\.0\.0-testscript'
+stdout '^ACTION_ENV_1=buz ACTION_ENV_2=buz$'
+stdout '^HOST_ENV_1=buz HOST_ENV_2=fred$'
+stdout '^host: buz waldo$'
+stdout '^action dir tpl: '$WORK'/test-shell/actions/env$'
+stdout '^action dir sh: '$WORK'/test-shell/actions/env$'
+stdout '^current bin tpl: /.*/launchr$'
+stdout '^current bin sh: /.*/launchr$'
+stdout '^parent action dir tpl: '$WORK'/test-shell/actions/call-self$'
+stdout '^parent action dir sh: '$WORK'/test-shell/actions/call-self$'
+stderr '^output to stderr$'
+
+-- test-shell/actions/env/action.yaml --
 action:
   title: shell action
-  options:
-    - name: firstoption
-      title: First option
-      type: string
-      default: ""
-    - name: secondoption
-      title: Second option
-      description: Option to do something
-      type: boolean
-      default: false
 
 runtime:
   type: shell
   env:
-    MY_ENV_VAR: "my_env_var"
+    ACTION_ENV_1: ${HOST_ENV_1}
+    ACTION_ENV_2: "buz"
+    HOST_ENV_2: "fred"
   script: |
-    pwd
-    echo "Current bin path: $$CBIN"
-    echo "Version:"
+    echo "ACTION_ENV_1=$$ACTION_ENV_1 ACTION_ENV_2=$$ACTION_ENV_2"
+    echo "HOST_ENV_1=$$HOST_ENV_1 HOST_ENV_2=$$HOST_ENV_2"
+    echo "host: $HOST_ENV_1 $HOST_ENV_2"
+    echo "action dir tpl: $ACTION_DIR"
+    echo "action dir sh: $$ACTION_DIR"
+    echo "current bin tpl: $$CBIN"
+    echo "current bin sh: $CBIN"
+
+-- test-shell/actions/call-self/action.yaml --
+action:
+  title: shell action
+
+runtime:
+  type: shell
+  script: |
     $$CBIN --version
     echo ""
-    echo $${MY_ENV_VAR}
-    $$ACTION_DIR/main.sh "{{ .firstoption }}" "{{ .secondoption }}"
-    echo "Finish"
+    export HOST_ENV_1=buz HOST_ENV_2=waldo
+    $$CBIN test-shell:env
+    echo "parent action dir tpl: $ACTION_DIR"
+    echo "parent action dir sh: $$ACTION_DIR"
+    $$CBIN test-shell:stderr
 
--- actions/test-shell/main.sh --
+-- test-shell/actions/stderr/action.yaml --
+action:
+  title: shell action
+
+runtime:
+  type: shell
+  script: |
+    echo "output to stdout"             # Write to standard output
+    echo "output to stderr" >&2         # Write to standard error
+
+-- test-shell/actions/env/main.sh --
 #!/bin/sh
 
 echo

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/launchrctl/launchr/internal/launchr"
 	"os"
 	"os/exec"
+
+	"github.com/launchrctl/launchr/internal/launchr"
 )
 
 type runtimeShell struct {
@@ -43,7 +44,7 @@ func (r *runtimeShell) Execute(ctx context.Context, a *Action) (err error) {
 	cmd.Dir = a.WorkDir()
 	cmd.Env = append(getShellEnv(), rt.Shell.Env...)
 	// TODO: Add ACTION_DIR and other
-	cmd.Env = append(cmd.Env, "CBIN="+cbin)
+	cmd.Env = append(cmd.Env, "CBIN="+cbin, "ACTION_DIR="+a.Dir(), "DISCOVERY_DIR="+a.fs.Realpath())
 	cmd.Stdout = streams.Out()
 	cmd.Stderr = streams.Err()
 	// Do no attach stdin, as it may not work as expected.
@@ -52,6 +53,7 @@ func (r *runtimeShell) Execute(ctx context.Context, a *Action) (err error) {
 	if err != nil {
 		return err
 	}
+	log.Debug("started process", "pid", cmd.Process.Pid)
 
 	// If we attached with TTY, all signals will be processed by a child process.
 	sigc := launchr.NotifySignals()

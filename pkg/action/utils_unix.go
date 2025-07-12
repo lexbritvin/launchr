@@ -2,9 +2,17 @@
 
 package action
 
+import (
+	"os"
+	"os/exec"
+	osuser "os/user"
+
+	"github.com/launchrctl/launchr/internal/launchr"
+)
+
 func getCurrentUser() userInfo {
 	// If running in a container native environment, run container as a current user.
-	curuser = userInfo{}
+	curuser := userInfo{}
 	u, err := osuser.Current()
 	if err == nil {
 		curuser.UID = u.Uid
@@ -24,7 +32,7 @@ func getShellAndExecutable() (string, string, error) {
 	}
 	defaultShell := os.Getenv("SHELL")
 	if defaultShell == "" {
-		path, err = exec.LookPath("bash")
+		path, err := exec.LookPath("bash")
 		if err != nil {
 			return "", "", err
 		}

@@ -71,6 +71,13 @@ func getActionVar(a *Action, key string) (string, bool) {
 		return getCurrentUser().UID, true
 	} else if key == "GID" {
 		return getCurrentUser().GID, true
+	} else if key == "CBIN" {
+		// Get the path of the executable on the host.
+		bin, err := os.Executable()
+		if err != nil {
+			bin = launchr.Version().Name
+		}
+		return bin, true
 	}
 
 	if a == nil {
@@ -178,12 +185,7 @@ func addPredefinedVariables(data map[string]any, a *Action) {
 	data["current_working_dir"], _ = getActionVar(a, "WORKING_DIR") // app working directory
 	data["actions_base_dir"], _ = getActionVar(a, "DISCOVERY_DIR")  // root directory where the action was found
 	data["action_dir"], _ = getActionVar(a, "ACTION_DIR")           // directory of action file
-	// Get the path of the executable on the host.
-	bin, err := os.Executable()
-	if err != nil {
-		bin = launchr.Version().Name
-	}
-	data["current_bin"] = bin
+	data["current_bin"], _ = getActionVar(a, "CBIN")                // Get the path of the executable on the host.
 }
 
 func checkDashErr(err error, data map[string]any) error {

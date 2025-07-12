@@ -13,7 +13,9 @@ func init() {
 }
 
 // Plugin is a test plugin declaration.
-type Plugin struct{}
+type Plugin struct {
+	app launchr.App
+}
 
 // PluginInfo implements [launchr.Plugin] interface.
 func (p *Plugin) PluginInfo() launchr.PluginInfo {
@@ -22,6 +24,7 @@ func (p *Plugin) PluginInfo() launchr.PluginInfo {
 
 // OnAppInit implements [launchr.OnAppInitPlugin] interface.
 func (p *Plugin) OnAppInit(app launchr.App) error {
+	p.app = app
 	var am action.Manager
 	app.GetService(&am)
 	// Add custom fs to default discovery.
@@ -34,6 +37,7 @@ func (p *Plugin) OnAppInit(app launchr.App) error {
 // DiscoverActions implements [launchr.ActionDiscoveryPlugin] interface.
 func (p *Plugin) DiscoverActions(_ context.Context) ([]*action.Action, error) {
 	return []*action.Action{
+		actionSensitive(p.app),
 		actionLogLevels(),
 		embedContainerAction(),
 	}, nil

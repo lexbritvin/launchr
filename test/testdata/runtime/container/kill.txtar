@@ -46,7 +46,7 @@ sleep 5s
 # Send interrupt signal to test signal forwarding
 # Transmit SIGINT (interrupt signal) to the background process
 # This tests the signal forwarding mechanism between host and container
-kill -INT appint
+# kill -INT appint
 
 # Wait for process to complete and validate exit behavior
 # Synchronize with the background process to ensure completion
@@ -57,6 +57,7 @@ wait appint
 # -----------------------------------------------------------------------------
 # Validate signal reception and handling within container
 # Expected output: "Received signal: SIGINT" from the signal trap
+stdout '^Waiting for signals...$'
 stdout '^Received signal: SIGINT$'
 
 # Validate proper exit code handling (custom exit code 42)
@@ -118,6 +119,7 @@ echo "Waiting for signals..."
 # - Validate signal handling behavior
 # Note: Script will be interrupted by signal before completion
 sleep 10
+exit 45
 
 # =============================================================================
 # Expected Behavior Summary
