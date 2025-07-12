@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	osuser "os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -372,35 +371,6 @@ func (c *runtimeContainer) Execute(ctx context.Context, a *Action) (err error) {
 	return err
 }
 
-type userInfo struct {
-	UID int
-	GID int
-}
-
-func (u userInfo) String() string {
-	return fmt.Sprintf("%d:%d", u.UID, u.GID)
-}
-
-func getCurrentUser() userInfo {
-	// Use neutral 1000 when we can't get UID like on Windows.
-	const defaultUID = 1000
-	const defaultGID = 1000
-	curuser := userInfo{
-		UID: defaultUID,
-		GID: defaultGID,
-	}
-	// If running in a container native environment, run container as a current user.
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		u, err := osuser.Current()
-		if err == nil {
-			curuser.UID, _ = strconv.Atoi(u.Uid)
-			curuser.GID, _ = strconv.Atoi(u.Gid)
-		}
-	}
-	return curuser
-}
-
 func (c *runtimeContainer) Close() error {
 	if c.crt == nil {
 		return nil
@@ -635,7 +605,9 @@ func (c *runtimeContainer) copyToContainer(ctx context.Context, cid, srcPath, ds
 	// Set UID explicitly when run on Windows because files are copied as root.
 	if runtime.GOOS == "windows" { //nolint:goconst
 		user := getCurrentUser()
-		tarOpts = &archive.TarOptions{ChownOpts: &archive.ChownOpts{UID: user.UID, GID: user.GID}}
+		uid, _ := strconv.Atoi(user.UID)
+		gid, _ := strconv.Atoi(user.GID)
+		tarOpts = &archive.TarOptions{ChownOpts: &archive.ChownOpts{UID: uid, GID: gid}}
 	}
 
 	arch, err := archive.Tar(
@@ -690,13 +662,4 @@ func (c *runtimeContainer) isSELinuxEnabled(ctx context.Context) bool {
 
 func (c *runtimeContainer) isRemote() bool {
 	return c.isRemoteRuntime || c.isSetRemote
-}
-
-func normalizeContainerMountPath(path string) string {
-	path = launchr.MustAbs(path)
-	if runtime.GOOS == "windows" { //nolint:goconst
-		// Convert windows paths C:\my\path -> /c/my/path for docker daemon.
-		return "/mnt" + launchr.ConvertWindowsPath(path)
-	}
-	return path
 }

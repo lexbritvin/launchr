@@ -69,6 +69,7 @@ func Test_InputProcessor(t *testing.T) {
 	res, err = proc.Process(ctx, []byte(s))
 	assert.Equal(t, err, errMissingVar{vars: map[string]struct{}{"optUnd": {}, "arg2": {}}})
 	assert.Equal(t, "", string(res))
+
 }
 
 func Test_YamlTplCommentsProcessor(t *testing.T) {

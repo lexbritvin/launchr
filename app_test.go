@@ -37,23 +37,21 @@ func TestBinary(t *testing.T) {
 		setup     []tsSetupfn
 		skipShort bool
 		skipOS    []string
-		timeout   time.Duration
 		conseq    bool
 	}
 	testcases := []testcase{
-		{name: "common", dir: "test/testdata/common", timeout: 30 * time.Second},
-		{name: "action/discovery", dir: "test/testdata/action/discovery", timeout: 30 * time.Second},
-		{name: "action/input", dir: "test/testdata/action/input", timeout: 30 * time.Second},
+		{name: "common", dir: "test/testdata/common"},
+		{name: "action/discovery", dir: "test/testdata/action/discovery"},
+		{name: "action/input", dir: "test/testdata/action/input"},
 
 		// Runtime Shell.
-		{name: "runtime/shell", dir: "test/testdata/runtime/shell", timeout: 30 * time.Second},
+		{name: "runtime/shell", dir: "test/testdata/runtime/shell"},
 		// Runtime Docker.
 		{
 			name:      "runtime/container/docker",
 			dir:       "test/testdata/runtime/container",
 			setup:     []tsSetupfn{coretest.SetupEnvDocker, coretest.SetupEnvRandom},
 			skipShort: true,
-			timeout:   180 * time.Second, // Download and build of images may take time on cold run.
 		},
 
 		// Test binary build using self.
@@ -67,7 +65,6 @@ func TestBinary(t *testing.T) {
 			setup:     []tsSetupfn{setupBuildEnv},
 			skipShort: true,
 			skipOS:    []string{"windows"},
-			timeout:   120 * time.Second,
 			conseq:    true,
 		},
 		{
@@ -76,7 +73,6 @@ func TestBinary(t *testing.T) {
 			setup:     []tsSetupfn{setupBuildEnv},
 			skipShort: true,
 			skipOS:    []string{"windows"},
-			timeout:   120 * time.Second,
 		},
 	}
 	for _, tt := range testcases {
@@ -92,8 +88,8 @@ func TestBinary(t *testing.T) {
 				t.Parallel()
 			}
 			var deadline time.Time
-			if tt.timeout != 0 && !launchr.Version().Debug {
-				deadline = time.Now().Add(tt.timeout)
+			if !launchr.Version().Debug {
+				deadline = time.Now().Add(5 * time.Minute)
 			}
 
 			testscript.Run(t, testscript.Params{

@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/launchrctl/launchr/internal/launchr"
 	"os"
 	"os/exec"
-	"runtime"
-
-	"github.com/launchrctl/launchr/internal/launchr"
 )
 
 type runtimeShell struct {
@@ -25,9 +23,6 @@ func (r *runtimeShell) Clone() Runtime {
 }
 
 func (r *runtimeShell) Init(_ context.Context, _ *Action) (err error) {
-	if runtime.GOOS == "windows" {
-		return fmt.Errorf("shell runtime is not supported in Windows")
-	}
 	return nil
 }
 
@@ -37,14 +32,18 @@ func (r *runtimeShell) Execute(ctx context.Context, a *Action) (err error) {
 
 	streams := a.Input().Streams()
 	rt := a.RuntimeDef()
-	defaultShell := os.Getenv("SHELL")
-	if defaultShell == "" {
-		defaultShell = "/bin/bash"
-	}
 
-	cmd := exec.CommandContext(ctx, defaultShell, "-l", "-c", rt.Shell.Script) //nolint:gosec // G204 user script is expected.
+	shell, cbin, err := getShellAndExecutable()
+	if err != nil {
+		return err
+	}
+	log.Debug("using shell", "shell", shell)
+
+	cmd := exec.CommandContext(ctx, shell, "-l", "-c", rt.Shell.Script) //nolint:gosec // G204 user script is expected.
 	cmd.Dir = a.WorkDir()
-	cmd.Env = append(os.Environ(), rt.Shell.Env...)
+	cmd.Env = append(getShellEnv(), rt.Shell.Env...)
+	// TODO: Add ACTION_DIR and other
+	cmd.Env = append(cmd.Env, "CBIN="+cbin)
 	cmd.Stdout = streams.Out()
 	cmd.Stderr = streams.Err()
 	// Do no attach stdin, as it may not work as expected.
@@ -80,4 +79,10 @@ func (r *runtimeShell) Execute(ctx context.Context, a *Action) (err error) {
 
 func (r *runtimeShell) Close() error {
 	return nil
+}
+
+func getShellEnv() []string {
+	// TODO: Filter PATH etc, it must come from login
+	// TODO: Add CBIN
+	return os.Environ()
 }

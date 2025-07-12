@@ -8,6 +8,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type userInfo struct {
+	UID string
+	GID string
+}
+
+func (u userInfo) String() string {
+	return u.UID + ":" + u.GID
+}
+
 func yamlTypeError(s string) *yaml.TypeError {
 	return &yaml.TypeError{Errors: []string{s}}
 }

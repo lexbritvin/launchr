@@ -8,7 +8,7 @@
 # TODO: Test sensitive in subactions
 
 chmod 777 actions/test-shell/main.sh
-exec launchr test-shell
+exec launchr test-shell -vvvv
 
 -- actions/test-shell/action.yaml --
 action:
@@ -30,12 +30,12 @@ runtime:
     MY_ENV_VAR: "my_env_var"
   script: |
     pwd
-    echo "Current bin path: {{ .current_bin }}"
+    echo "Current bin path: $$CBIN"
     echo "Version:"
-    {{ .current_bin }} --version
+    $$CBIN --version
     echo ""
     echo $${MY_ENV_VAR}
-    {{ .action_dir }}/main.sh "{{ .firstoption }}" "{{ .secondoption }}"
+    $$ACTION_DIR/main.sh "{{ .firstoption }}" "{{ .secondoption }}"
     echo "Finish"
 
 -- actions/test-shell/main.sh --

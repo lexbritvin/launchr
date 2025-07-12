@@ -28,10 +28,10 @@
 # This ensures unique registry names in shared environments,
 # such as GitHub Actions on Windows/macOS, or in Kubernetes clusters.
 env IMAGE_REGISTRY=$RANDOM
-txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-1/action.yaml actions/testimage-1/action.yaml
-txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-2/action.yaml actions/testimage-2/action.yaml
-txtproc replace '[image_placeholder]' $IMAGE_REGISTRY actions/testimage-3/action.yaml actions/testimage-3/action.yaml
-txtproc replace '[image_placeholder]' $IMAGE_REGISTRY .launchr/config.yaml .launchr/config.yaml
+txtproc replace '[img_registy]' $IMAGE_REGISTRY actions/testimage-1/action.yaml actions/testimage-1/action.yaml
+txtproc replace '[img_registy]' $IMAGE_REGISTRY actions/testimage-2/action.yaml actions/testimage-2/action.yaml
+txtproc replace '[img_registy]' $IMAGE_REGISTRY actions/testimage-3/action.yaml actions/testimage-3/action.yaml
+txtproc replace '[img_registy]' $IMAGE_REGISTRY .launchr/config.yaml .launchr/config.yaml
 
 # Test 1: Initial Image Build with Multiple Tags
 # -----------------------------------------------------------------------------
@@ -195,16 +195,16 @@ action:
 
 runtime:
   type: container                         # Container execution type
-  image: [image_placeholder]/testimage-1:latest            # Primary image name
+  image: [img_registy]/testimage-1:latest # Primary image name
   build:
     context: ./                           # Build context directory
     args:
-      USER_ID: {{ .current_uid }}         # Template: current user ID
-      GROUP_ID: {{ .current_gid }}        # Template: current group ID
+      USER_ID: $UID                       # Template: current user ID
+      GROUP_ID: $GID                      # Template: current group ID
       USER_NAME: foobar                   # Static build argument
     tags:
-      - [image_placeholder]/testimage-1:bar                # Additional image tag
-      - [image_placeholder]/testimage-1:buz                # Additional image tag
+      - [img_registy]/testimage-1:bar     # Additional image tag
+      - [img_registy]/testimage-1:buz     # Additional image tag
   command:
     - id                                  # Command to display user info
 
@@ -227,7 +227,7 @@ action:
 
 runtime:
   type: container                         # Container execution type
-  image: [image_placeholder]/testimage-2:foo               # Custom image name with tag
+  image: [img_registy]/testimage-2:foo    # Custom image name with tag
   build:
     context: ./context                    # Custom build context subdirectory
     buildfile: test.Dockerfile            # Custom Dockerfile name
@@ -257,7 +257,7 @@ action:
 
 runtime:
   type: container                         # Container execution type
-  image: [image_placeholder]/testimage-3                   # Image name (config in .launchr/config.yaml)
+  image: [img_registy]/testimage-3        # Image name (config in .launchr/config.yaml)
   command:
     - sh                                  # Shell command execution
     - -c                                  # Execute command string
@@ -267,15 +267,15 @@ runtime:
 -- .launchr/config.yaml --
 # Global configuration file defining image build settings
 images:
-  [image_placeholder]/testimage-3:                         # Image name matching action
+  [img_registy]/testimage-3:              # Image name matching action
     context: ./testimage-3                # Build context directory
     buildfile: test1.Dockerfile           # Custom Dockerfile name
     args:
       MY_ARG_1: "foo"                     # Build argument value
       MY_ARG_2: "bar"                     # Build argument value
     tags:
-      - [image_placeholder]/testimage-3:bar                # Additional image tag
-      - [image_placeholder]/testimage-3:buz                # Additional image tag
+      - [img_registy]/testimage-3:bar     # Additional image tag
+      - [img_registy]/testimage-3:buz     # Additional image tag
 
 # Global Configuration Dockerfile
 -- .launchr/testimage-3/test1.Dockerfile --
@@ -315,6 +315,6 @@ ENV MY_ARG_2=${MY_ARG_2}
 # - Embedded filesystem action support
 # - Checksum tracking for cache validation
 # - Automatic cleanup and rebuild capabilities
-# - Template variable substitution (current_uid, current_gid)
+# - Template variable substitution ($UID, current_uid, current_gid, $GID)
 #
 # =============================================================================
