@@ -4,10 +4,11 @@ package action
 
 import (
 	"context"
-	"github.com/launchrctl/launchr/internal/launchr"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/launchrctl/launchr/internal/launchr"
 )
 
 func getCurrentUser() userInfo {
@@ -37,38 +38,53 @@ func isWSLShell(ctx context.Context, shell string) bool {
 	return strings.Contains(wslOut.String(), "WSL")
 }
 
-func getShellAndExecutable() (string, string, error) {
+func getShellContext() (*shellContext, error) {
+	path, err := findWindowsBash()
+	if err != nil {
+		return nil, err
+	}
+	cbin, env := getExecutableWindowsUnix(path)
+
+	return &shellContext{
+		Shell: path,
+		Exec:  cbin,
+		Env:   env,
+	}, nil
+}
+
+func findWindowsBash() (string, error) {
 	candidates := []string{
 		"C:\\cygwin64\\bin\\bash.exe",
 		"C:\\msys64\\usr\\bin\\bash.exe",
 		"C:\\Program Files\\Git\\bin\\bash.exe",
 	}
+
 	for _, path := range candidates {
 		if _, err := os.Stat(path); err == nil {
-			return path, getExecutableUnix(path), nil
+			return path, nil
 		}
 	}
 	// Fallback to LookPath, it may give a bash of WSL
 	// which is not exactly host but will run bash just fine.
 	path, err := exec.LookPath("bash")
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-
-	return path, getExecutableUnix(path), nil
+	return path, nil
 }
 
-func getExecutableUnix(shell string) string {
+func getExecutableWindowsUnix(shell string) (string, []string) {
 	ctx := context.Background()
 	// Get the path of the executable on the host.
 	currentBin, err := os.Executable()
+	env := os.Environ()
 	if err != nil {
-		return launchr.Version().Name
+		return launchr.Version().Name, env
 	}
 
 	if isWSLShell(ctx, shell) {
-		return normalizeContainerMountPath(currentBin)
+		return normalizeContainerMountPath(currentBin), env
 	}
 
-	return launchr.ConvertWindowsPath(currentBin)
+	return launchr.ConvertWindowsPath(currentBin), env
 }

@@ -10,6 +10,12 @@ import (
 	"github.com/launchrctl/launchr/internal/launchr"
 )
 
+type shellContext struct {
+	Shell string
+	Exec  string
+	Env   []string
+}
+
 type runtimeShell struct {
 	WithLogger
 }
@@ -34,17 +40,25 @@ func (r *runtimeShell) Execute(ctx context.Context, a *Action) (err error) {
 	streams := a.Input().Streams()
 	rt := a.RuntimeDef()
 
-	shell, cbin, err := getShellAndExecutable()
+	shctx, err := getShellContext()
 	if err != nil {
 		return err
 	}
-	log.Debug("using shell", "shell", shell)
+	log.Debug("using shell", "shell", shctx.Shell)
 
-	cmd := exec.CommandContext(ctx, shell, "-l", "-c", rt.Shell.Script) //nolint:gosec // G204 user script is expected.
+	// Create a temporary script file
+	scriptFile, err := r.createExecScript(rt.Shell.Script)
+	if err != nil {
+		return fmt.Errorf("failed to create exec script: %w", err)
+	}
+	defer os.Remove(scriptFile)
+	log.Debug("created exec script", "script_file", scriptFile)
+
+	// Execute the script file directly
+	cmd := exec.CommandContext(ctx, shctx.Shell, scriptFile)
 	cmd.Dir = a.WorkDir()
 	cmd.Env = append(getShellEnv(), rt.Shell.Env...)
-	// TODO: Add ACTION_DIR and other
-	cmd.Env = append(cmd.Env, "CBIN="+cbin, "ACTION_DIR="+a.Dir(), "DISCOVERY_DIR="+a.fs.Realpath())
+	cmd.Env = append(cmd.Env, "CBIN="+shctx.Exec, "ACTION_DIR="+a.Dir(), "DISCOVERY_DIR="+a.fs.Realpath())
 	cmd.Stdout = streams.Out()
 	cmd.Stderr = streams.Err()
 	// Do no attach stdin, as it may not work as expected.
@@ -68,15 +82,37 @@ func (r *runtimeShell) Execute(ctx context.Context, a *Action) (err error) {
 	if errors.As(cmdErr, &exitErr) {
 		exitCode := exitErr.ExitCode()
 		msg := fmt.Sprintf("action %q finished with exit code %d", a.ID, exitCode)
+
 		// Process was interrupted.
 		if exitCode == -1 {
 			exitCode = 130
 			msg = fmt.Sprintf("action %q was interrupted, finished with exit code %d", a.ID, exitCode)
 		}
-		log.Info("action finished with the exit code", "exit_code", exitCode)
+		log.Info("action finished with exit code", "exit_code", exitCode)
 		return launchr.NewExitError(exitCode, msg)
 	}
 	return cmdErr
+}
+
+func (r *runtimeShell) createExecScript(script string) (string, error) {
+	// Create temp file in the action's work directory
+	tempDir, err := launchr.MkdirTemp("shell_*")
+	if err != nil {
+		return "", err
+	}
+
+	tempFile, err := os.CreateTemp(tempDir, "action-exec-*.sh")
+	if err != nil {
+		return "", err
+	}
+	defer tempFile.Close()
+
+	if _, err := tempFile.WriteString(script); err != nil {
+		os.Remove(tempFile.Name())
+		return "", err
+	}
+
+	return tempFile.Name(), nil
 }
 
 func (r *runtimeShell) Close() error {

@@ -25,18 +25,23 @@ func normalizeContainerMountPath(path string) string {
 	return launchr.MustAbs(path)
 }
 
-func getShellAndExecutable() (string, string, error) {
+func getShellContext() (*shellContext, error) {
 	currentBin, err := os.Executable()
 	if err != nil {
 		currentBin = launchr.Version().Name
 	}
 	defaultShell := os.Getenv("SHELL")
+	shctx := &shellContext{
+		Shell: defaultShell,
+		Exec:  currentBin,
+		Env:   os.Environ(),
+	}
 	if defaultShell == "" {
 		path, err := exec.LookPath("bash")
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
-		return path, currentBin, nil
+		shctx.Shell = path
 	}
-	return defaultShell, currentBin, nil
+	return shctx, nil
 }
