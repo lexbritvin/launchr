@@ -135,6 +135,7 @@ jobs:
     needs: select-os
     runs-on: ${{ needs.select-os.outputs.runner-os || 'ubuntu-latest' }}
     steps:
+      - uses: Vampire/setup-wsl@v6
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
@@ -214,7 +215,6 @@ jobs:
 #        with:
 #          private-key: ${{ needs.select-os.outputs.private-key }}
 #          use-remote-share: 'true'
-      - uses: Vampire/setup-wsl@v6
 
       - name: 🔗 Establish SSH Debug Session
         id: ssh-session
