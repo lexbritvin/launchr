@@ -118,7 +118,7 @@ jobs:
     name: 🐳 Linux Docker Sidecar
     needs: [select-os]
     runs-on: ubuntu-latest
-    if: needs.select-os.outputs.os-type != 'linux'
+    if: needs.select-os.outputs.use-docker-sidecar
     steps:
       - name: 🚀 Launch Linux Docker sidecar
         uses: lexbritvin/docker-sidecar-action/run-sidecar@main
