@@ -119,7 +119,7 @@ jobs:
     name: 🐳 Linux Docker Sidecar
     needs: [select-os]
     runs-on: ubuntu-latest
-    if: needs.select-os.outputs.use-docker-sidecar
+    if: needs.select-os.outputs.use-docker-sidecar == 'true'
     steps:
       - name: 🚀 Launch Linux Docker sidecar
         uses: lexbritvin/docker-sidecar-action/run-sidecar@main
@@ -222,7 +222,7 @@ jobs:
       - name: 🐳 Configure Remote Docker
         id: docker-setup
         uses: lexbritvin/docker-sidecar-action/setup-remote-docker@main
-        if: needs.select-os.outputs.use-docker-sidecar
+        if: needs.select-os.outputs.use-docker-sidecar == 'true'
         with:
           private-key: ${{ needs.select-os.outputs.private-key }}
           use-remote-share: 'true'
