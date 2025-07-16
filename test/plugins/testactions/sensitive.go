@@ -19,13 +19,16 @@ action:
       required: true
 `
 
-func actionSensitive(app launchr.App) *action.Action {
+func init() {
 	// Create an action that outputs a secret in a terminal.
 	secret := os.Getenv("TEST_SECRET")
 	if secret != "" {
-		mask := app.SensitiveMask()
+		mask := launchr.GlobalSensitiveMask()
 		mask.AddString(secret)
 	}
+}
+
+func actionSensitive(app launchr.App) *action.Action {
 	a := action.NewFromYAML("testplugin:sensitive", []byte(sensitiveYaml))
 	a.SetRuntime(action.NewFnRuntime(func(_ context.Context, a *action.Action) error {
 		arg := a.Input().Arg("arg").(string)
@@ -41,10 +44,12 @@ func actionSensitive(app launchr.App) *action.Action {
 		_, _ = fmt.Fprintf(streams.Err(), "fmt stderr streams print: %s\n", arg)
 		// Check if we output by parts.
 		parts := strings.Split(arg, " ")
-		launchr.Term().Print("split output: ")
-		launchr.Term().Print(parts[0])
-		launchr.Term().Print(" ")
-		launchr.Term().Println(parts[1])
+		if len(parts) == 2 {
+			launchr.Term().Print("split output: ")
+			launchr.Term().Print(parts[0])
+			launchr.Term().Print(" ")
+			launchr.Term().Println(parts[1])
+		}
 		return nil
 	}))
 	return a

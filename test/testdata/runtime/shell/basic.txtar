@@ -1,7 +1,4 @@
-# TODO: Test sensitive in subactions
 # TODO: Fix Windows
-
-chmod 777 test-shell/actions/env/main.sh
 
 env HOST_ENV_1=foo
 env HOST_ENV_2=bar
@@ -35,7 +32,7 @@ stderr '^output to stderr$'
 
 -- test-shell/actions/env/action.yaml --
 action:
-  title: shell action
+  title: shell action - environment variables
 
 runtime:
   type: shell
@@ -54,7 +51,7 @@ runtime:
 
 -- test-shell/actions/call-self/action.yaml --
 action:
-  title: shell action
+  title: shell action - call current binary
 
 runtime:
   type: shell
@@ -69,27 +66,10 @@ runtime:
 
 -- test-shell/actions/stderr/action.yaml --
 action:
-  title: shell action
+  title: shell action - stderr
 
 runtime:
   type: shell
   script: |
     echo "output to stdout"             # Write to standard output
     echo "output to stderr" >&2         # Write to standard error
-
--- test-shell/actions/env/main.sh --
-#!/bin/sh
-
-echo
-# Print the total count of arguments
-echo "Total number of arguments passed to the script: $#"
-count=1
-for arg in "$@"
-do
-    if [ -z "$arg" ]; then
-        echo "- Argument $count: \"\""
-    else
-        echo "- Argument $count: $arg"
-    fi
-    count=$((count + 1))
-done
