@@ -57,36 +57,43 @@ jobs:
               echo "✅ Selected: Ubuntu Latest (AMD64)"
               echo "runner-os=ubuntu-latest" >> $GITHUB_OUTPUT
               echo "os-type=linux" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=false" >> $GITHUB_OUTPUT
               ;;
             *"Ubuntu LTS (arm64)"*)
               echo "✅ Selected: Ubuntu 24.04 (ARM64)"
               echo "runner-os=ubuntu-24.04-arm" >> $GITHUB_OUTPUT
               echo "os-type=linux" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=false" >> $GITHUB_OUTPUT
               ;;
             *"macOS Latest (arm64)"*)
               echo "✅ Selected: macOS Latest (ARM64)"
               echo "runner-os=macos-latest" >> $GITHUB_OUTPUT
               echo "os-type=macos" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=true" >> $GITHUB_OUTPUT
               ;;
             *"macOS 13 (amd64)"*)
               echo "✅ Selected: macOS 13 (AMD64)"
               echo "runner-os=macos-13" >> $GITHUB_OUTPUT
               echo "os-type=macos" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=false" >> $GITHUB_OUTPUT
               ;;
             *"Windows Latest (amd64)"*)
               echo "✅ Selected: Windows Latest (AMD64)"
               echo "runner-os=windows-latest" >> $GITHUB_OUTPUT
               echo "os-type=windows" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=false" >> $GITHUB_OUTPUT
               ;;
             *"Windows Latest (arm64)"*)
               echo "✅ Selected: Windows 11 (ARM64)"
               echo "runner-os=windows-11-arm" >> $GITHUB_OUTPUT
               echo "os-type=windows" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=true" >> $GITHUB_OUTPUT
               ;;
             *)
               echo "⚠️  No specific OS selected, defaulting to Ubuntu Latest"
               echo "runner-os=ubuntu-latest" >> $GITHUB_OUTPUT
               echo "os-type=linux" >> $GITHUB_OUTPUT
+              echo "use-docker-sidecar=false" >> $GITHUB_OUTPUT
               ;;
           esac
 
@@ -135,7 +142,9 @@ jobs:
     needs: select-os
     runs-on: ${{ needs.select-os.outputs.runner-os || 'ubuntu-latest' }}
     steps:
-      - uses: Vampire/setup-wsl@v6
+      - uses: lexbritvin/setup-docker-action@main
+        if: needs.select-os.outputs.use-docker-sidecar == 'false' && runner.os != 'linux'
+
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
@@ -208,13 +217,13 @@ jobs:
               ;;
           esac
 
-#      - name: 🐳 Configure Remote Docker
-#        id: docker-setup
-#        uses: lexbritvin/docker-sidecar-action/setup-remote-docker@main
-#        if: needs.select-os.outputs.os-type != 'linux'
-#        with:
-#          private-key: ${{ needs.select-os.outputs.private-key }}
-#          use-remote-share: 'true'
+      - name: 🐳 Configure Remote Docker
+        id: docker-setup
+        uses: lexbritvin/docker-sidecar-action/setup-remote-docker@main
+        if: needs.select-os.outputs.use-docker-sidecar
+        with:
+          private-key: ${{ needs.select-os.outputs.private-key }}
+          use-remote-share: 'true'
 
       - name: 🔗 Establish SSH Debug Session
         id: ssh-session
