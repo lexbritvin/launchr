@@ -142,7 +142,8 @@ jobs:
     needs: select-os
     runs-on: ${{ needs.select-os.outputs.runner-os || 'ubuntu-latest' }}
     steps:
-      - uses: lexbritvin/setup-docker-action@main
+      - name: 🐳 Install Local Docker
+        uses: lexbritvin/setup-docker-action@main
         if: needs.select-os.outputs.use-docker-sidecar == 'false' && runner.os != 'linux'
 
       - name: 📥 Checkout repository
