@@ -144,7 +144,7 @@ jobs:
     steps:
       - name: 🐳 Install Local Docker
         uses: lexbritvin/setup-docker-action@main
-        if: needs.select-os.outputs.use-docker-sidecar == 'false' && needs.select-os.outputs.os-type != 'linux'
+        if: needs.select-os.outputs.use-docker-sidecar != 'true' && needs.select-os.outputs.os-type != 'linux'
 
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
