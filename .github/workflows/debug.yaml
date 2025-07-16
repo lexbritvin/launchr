@@ -43,6 +43,7 @@ jobs:
     outputs:
       runner-os: ${{ steps.map-os.outputs.runner-os }}
       os-type: ${{ steps.map-os.outputs.os-type }}
+      use-docker-sidecar: ${{ steps.map-os.outputs.use-docker-sidecar }}
       private-key: ${{ steps.generate-key.outputs.private-key }}
       public-key: ${{ steps.generate-key.outputs.public-key }}
     steps:
@@ -144,7 +145,7 @@ jobs:
     steps:
       - name: 🐳 Install Local Docker
         uses: lexbritvin/setup-docker-action@main
-        if: needs.select-os.outputs.use-docker-sidecar != 'true' && needs.select-os.outputs.os-type != 'linux'
+        if: needs.select-os.outputs.use-docker-sidecar == 'false' && needs.select-os.outputs.os-type != 'linux'
 
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
