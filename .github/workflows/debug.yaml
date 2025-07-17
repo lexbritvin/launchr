@@ -143,10 +143,6 @@ jobs:
     needs: select-os
     runs-on: ${{ needs.select-os.outputs.runner-os || 'ubuntu-latest' }}
     steps:
-      - name: 🐳 Install Local Docker
-        uses: lexbritvin/setup-docker-action@main
-        if: needs.select-os.outputs.use-docker-sidecar == 'false' && needs.select-os.outputs.os-type != 'linux'
-
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
@@ -218,6 +214,10 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: 🐳 Install Local Docker
+        uses: lexbritvin/setup-docker-action@main
+        if: needs.select-os.outputs.use-docker-sidecar == 'false' && needs.select-os.outputs.os-type != 'linux'
 
       - name: 🐳 Configure Remote Docker
         id: docker-setup

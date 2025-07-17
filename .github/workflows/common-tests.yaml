@@ -84,42 +84,29 @@ jobs:
             os: ubuntu-24.04-arm
           - name: 🍎 MacOS (amd64)
             os: macos-13
-            needs-sidecar: true
           - name: 🍎 MacOS (arm64)
             os: macos-latest
             needs-sidecar: true
           - name: 🖥️ Windows (amd64)
             os: windows-latest
-            continue-on-error: true # TODO: Windows is not well supported
-            needs-sidecar: true
           - name: 🖥️ Windows (arm64)
             os: windows-11-arm
-            continue-on-error: true
             needs-sidecar: true
     runs-on: ${{ matrix.os }}
     needs: [ client-ssh-key ]
     continue-on-error: ${{ matrix.continue-on-error || false }}
-    # Have different working-directory per runner to be on different paths on linux-sidecar.
     defaults:
       run:
         shell: bash
-        working-directory: ${{ matrix.os }}
-    env:
-      WORKING_DIR: ${{ matrix.os }}
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
-        with:
-          path: ${{ env.WORKING_DIR }}
 
       - name: 📊 OS Info
         uses: lexbritvin/os-info-action@v1
 
       - name: 🏗️ Set up Go
         uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-          go-version-file: ${{ env.WORKING_DIR }}/go.mod
 
       - name: 📦 Prepare dependencies
         run: |
@@ -128,6 +115,10 @@ jobs:
           go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
           echo "✅ Dependencies downloaded successfully!"
 
+      - name: 🐳 Install Local Docker
+        uses: lexbritvin/setup-docker-action@main
+        if: matrix.needs-sidecar == 'false' && runner.os != 'Linux'
+
       # Set up the Docker sidecar environment
       - name: 🐳 Set up Remote Docker
         id: docker-setup
@@ -135,7 +126,6 @@ jobs:
         if: ${{ matrix.needs-sidecar && inputs.use-docker-sidecar }}
         with:
           private-key: ${{ needs.client-ssh-key.outputs.private-key }}
-          working-directory: ${{ env.WORKING_DIR }}
           use-remote-share: ${{ inputs.use-sidecar-remote-share }}
 
       - name: 🧪 Go Test
@@ -161,7 +151,7 @@ jobs:
         if: always()
         with:
           name: test-log-${{ matrix.os }}
-          path: ${{ env.WORKING_DIR }}/.gotmp/gotest.log
+          path: .gotmp/gotest.log
           retention-days: 3
           if-no-files-found: error
 
